@@ -1,0 +1,12 @@
+{
+   "browser_action": {
+      "default_icon": "icon.jpg",
+      "default_popup": "popup.html"
+   },
+   "description": "Generate QR code.",
+   "name": "QR code genearator",
+   "permissions": [ "http://*/", "tabs" ],
+   "update_url": "http://clients2.google.com/service/update2/crx",
+   "version": "2.0",
+   "manifest_version": 2
+}
