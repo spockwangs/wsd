@@ -1,0 +1,51 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <title>二维码生成器</title>
+    <style type="text/css">
+      #url {
+      width: 400px;
+      }
+
+      #url-hint {
+      margin: 0;
+      padding: 5px;
+      border: lightgray 1px solid;
+      width: 390px;
+      max-height: 150px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      z-index: 10;
+      position: absolute;
+      background-color: white;
+      display: none;
+      }
+
+      .hint {
+      background-color: white;
+      color: black;
+      overflow: hidden;
+      word-wrap: normal;
+      word-break: break-all;
+      white-space: nowrap;
+      }
+
+      .hint.is-selected {
+      background-color: #4169E1;
+      color: #FFFFFF;
+      }
+    </style>
+  </head>
+  <body style="min-height: 250px">
+    <h2>二维码生成器</h2>
+    <input id="url" type="text" />
+    <div id="url-hint-wrapper">
+      <div id="url-hint">
+      </div>
+    </div>
+    <img id="qr-code" src="" />
+    <hr size="1" />
+    <i>Powered by <a href="mailto:wbbtiger@gmail.com">wbbtiger@gmail.com</a></i>
+    <script type="text/javascript" src="popup.js"></script>
+  </body>
+</html>

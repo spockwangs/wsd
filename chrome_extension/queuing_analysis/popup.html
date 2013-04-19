@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Queuing Analysis for Multi-server System</title>
+    <style type="text/css">
+      table {
+          border-collapse: collapse;
+          border: 2px solid DimGray;
+      }
+      th {
+          margin: 0;
+          padding: 2px 10px;
+          text-align: center;
+          background-color: DarkGray;
+      }
+      td {
+          margin: 0;
+          padding: 2px 10px;
+          text-align: left;
+          background-color: LightGray;
+      }
+    </style>
+  </head>
+  <body>
+    <ul style="list-style: none; padding-left: 0;">
+      <li>Model: M/M/N</li>
+      <li>Number of threads: <input id="nthreads" type="text" /></li>
+      <li>Mean service time (s): <input id="t_s" type="text" /></li>
+      <input type="button" value="开始计算" onclick="compute()" />
+    </ul>
+    <div id="table">
+    </div>
+    <script type="text/javascript" src="queuing_analysis.js"></script>
+  </body>
+</html>
