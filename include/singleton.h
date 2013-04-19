@@ -26,14 +26,6 @@
 
 namespace wsd {
 
-    namespace detail {
-
-        struct no_deleter {
-            void operator()(void *) {}
-        };
-
-    }  // namespace detail
-            
     template <typename T>
     class Singleton {
     public:
@@ -42,12 +34,12 @@ namespace wsd {
             if (!s_instance) {
                 {
                     Mutex::Lock lock(s_mutex);
-                    if (!s_p)
-                        s_p = new T();
+                    if (!s_ptr)
+                        s_ptr.reset(new T);
                 }
-                s_instance.reset(s_p);
+                s_instance.reset(&s_ptr);
             }
-            return SharedPtr<T>(s_instance.get(), detail::no_deleter());
+            return *s_instance;
         }
 
     private:
@@ -57,18 +49,21 @@ namespace wsd {
         Singleton() {}
         
         static Mutex s_mutex;
-        static T *s_p;
-        static ThreadSpecificPtr<T> s_instance;
+        static SharedPtr<T> s_ptr;
+        static ThreadSpecificPtr<SharedPtr<T> > s_instance;
     };
 
     template <typename T>
     Mutex Singleton<T>::s_mutex;
 
     template <typename T>
-    T *Singleton<T>::s_p = NULL;
+    SharedPtr<T> Singleton<T>::s_ptr;
 
+    // Use thread-local storage to cache the pointer to the singleton object to decrease
+    // contention.  Note that don't delete the thread-local data on thread exit because
+    // the data is statically allocated.
     template <typename T>
-    ThreadSpecificPtr<T> Singleton<T>::s_instance;
+    ThreadSpecificPtr<SharedPtr<T> > Singleton<T>::s_instance(NULL);  
 
 }  // namespace wsd
 
