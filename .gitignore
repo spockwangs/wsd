@@ -1,0 +1,7 @@
+# Editor
+*~
+
+# Makefile intermediate files
+*.o
+.*.d
+*.a
