@@ -71,3 +71,5 @@ function compute() {
     html += '</table>';
     document.getElementById('table').innerHTML = html;
 }
+
+document.getElementById('compute').onclick = compute;

@@ -1,9 +1,11 @@
 {
     "name": "URL encoder/decoder",
     "version": "1.0",
+    "manifest_version": 2,
     "description": "Encode or decode URL.",
     "browser_action": {
         "default_icon": "icon.png",
-        "popup": "popup.html"
-    }
+        "default_popup": "popup.html"
+    },
+    "permissions": [ "http://*/", "tabs" ]
 }
