@@ -60,7 +60,7 @@ function formatArray(arr, depth, asPropertyValue) {
         s = indent(depth) + '[\n';
     for (i = 0; i < arr.length; ++i)
         s += formatValue(arr[i], depth+indentSpaces) + (i == arr.length-1 ? '\n' : ',\n');
-    s += indent(depth) + ']\n';
+    s += indent(depth) + ']';
     return s;
 }
 
@@ -104,4 +104,14 @@ document.getElementById('format').onclick = function () {
     } catch (error) {
         jsonEle.value = 'error: ' + error.message;
     }
-}
+};
+
+document.getElementById('unformat').onclick = function () {
+    var jsonEle = document.getElementById('json');
+    try {
+        var jsonObj = JSON.parse(jsonEle.value);
+        jsonEle.value = JSON.stringify(jsonObj);
+    } catch (error) {
+        jsonEle.value = 'error: ' + error.message;
+    }
+};
