@@ -1,9 +1,11 @@
 {
     "name": "Queuing Analysis",
     "version": "1.0",
+    "manifest_version": 2,
     "description": "Analyze system performance using queuing theory.",
     "browser_action": {
         "default_icon": "icon.png",
-        "popup": "popup.html"
-    }
+        "default_popup": "popup.html"
+    },
+    "permissions": [ "http://*/", "tabs" ]
 }

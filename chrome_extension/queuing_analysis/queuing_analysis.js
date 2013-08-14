@@ -52,7 +52,7 @@ function waitingTimePercentile(rho, n, T_s, y) {
 
 function compute() {
     var nthreads = parseInt(document.getElementById('nthreads').value);
-    var T_s = parseFloat(document.getElementById('t_s').value);
+    var T_s = parseFloat(document.getElementById('t_ms').value) / 1000;
     var html = '<table border="1"><tr><th>&rho;</th>'
         + '<th>r</th><th>w</th>'
         + '<th>T<sub>w</sub>(s)</th><th>&lambda; (#/s)</th>'
@@ -71,3 +71,5 @@ function compute() {
     html += '</table>';
     document.getElementById('table').innerHTML = html;
 }
+
+document.getElementById('compute').onclick = compute;
