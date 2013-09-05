@@ -398,7 +398,7 @@ namespace wsd {
                     if (m_is_done) {
                         throwException(PromiseAlreadySatisfiedException(__FILE__, __LINE__));
                     }
-                    m_value.reset(new T(t));
+                    FutureTraits<T>::init(m_value, t);
                     markFinishedInternal();
                 }
                 doPendingCallbacks();
