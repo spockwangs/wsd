@@ -142,3 +142,8 @@ function genQrCode(url) {
         "http://chart.apis.google.com/chart?cht=qr&chs=300x300&chl="
             + encodeURIComponent(url));
 }
+
+chrome.tabs.getSelected(null, function (tab) {
+    document.getElementById('url').value = tab.url;
+    genQrCode(tab.url);
+});
