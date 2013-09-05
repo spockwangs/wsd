@@ -27,7 +27,7 @@ public:
         return ss.str();
     }
 
-    virtual wsd::Future<string> reload(int i, string s)
+    virtual wsd::Future<string> reload(int /*i*/, string s)
     {
         return wsd::makeFuture<string>(s+s);
     }

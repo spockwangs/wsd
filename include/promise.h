@@ -15,6 +15,7 @@
 #include "enable_shared_from_this.h"
 #include "lock.h"
 #include "cond.h"
+#include "shared_ptr.h"
 #include "wsd_assert.h"
 #include "wsd_magic.h"
 #include "template_util.h"
@@ -70,7 +71,10 @@ namespace wsd {
     
         template <typename T>
         struct FutureTraits {
-            typedef ScopedPtr<T> storage_type;
+            // Use shared pointer to enable sharing (and avoid copying) of the resolved
+            // value between two chained futures and improve the performance. See `copy()`
+            // of `FutureTraits`, and its use in `ForwardValue` below.
+            typedef SharedPtr<T> storage_type;
             typedef const T& rvalue_source_type;
             typedef const T& move_dest_type;
             typedef T& dest_reference_type;
@@ -83,6 +87,11 @@ namespace wsd {
             static void assign(dest_reference_type dest, const storage_type& storage)
             {
                 dest = *storage;
+            }
+
+            static void copy(storage_type& dest, const storage_type& storage)
+            {
+                dest = storage;
             }
         };
 
@@ -102,6 +111,11 @@ namespace wsd {
             {
                 dest = storage;
             }
+
+            static void copy(storage_type& dest, const storage_type& storage)
+            {
+                dest = storage;
+            }
         };
             
         template <>
@@ -116,6 +130,7 @@ namespace wsd {
             typedef typename FutureTraits<T>::rvalue_source_type rvalue_source_type;
             typedef typename FutureTraits<T>::move_dest_type move_dest_type;
             typedef typename FutureTraits<T>::dest_reference_type dest_reference_type;
+            typedef typename FutureTraits<T>::storage_type storage_type;
             typedef Callback<void(const SharedPtr<FutureObjectInterface>&)> CallbackType;
             
             virtual ~FutureObjectInterface() {}
@@ -123,11 +138,16 @@ namespace wsd {
             virtual bool isDone() const = 0;
             virtual bool hasValue() const = 0;
             virtual bool hasException() const = 0;
-            virtual void setValue(rvalue_source_type v) = 0;
-            virtual void setException(const ExceptionPtr& e) = 0;
+
+            // Prompt futures will never use these.
+            virtual void setValue(rvalue_source_type /*v*/) { WSD_FAIL(); }
+            virtual void setException(const ExceptionPtr& /*e*/) { WSD_FAIL(); }
+
             virtual move_dest_type get() const = 0;
             virtual bool tryGet(dest_reference_type v) const = 0;
             virtual void registerCallback(const CallbackType& callback) = 0;
+            virtual storage_type getStorageValue() const = 0;
+            virtual void setValueFromStorage(const storage_type& /*v*/) { WSD_FAIL(); }
         };
             
         template <>
@@ -141,8 +161,11 @@ namespace wsd {
             virtual bool isDone() const = 0;
             virtual bool hasValue() const = 0;
             virtual bool hasException() const = 0;
-            virtual void set() = 0;
-            virtual void setException(const ExceptionPtr& e) = 0;
+
+            // Prompt futures will never use these.
+            virtual void set() { WSD_FAIL(); }
+            virtual void setException(const ExceptionPtr& /*e*/) { WSD_FAIL(); }
+
             virtual move_dest_type get() const = 0;
             virtual void registerCallback(const CallbackType& callback) = 0;
         };
@@ -158,6 +181,7 @@ namespace wsd {
             typedef typename FutureObjectInterface<T>::move_dest_type move_dest_type;
             typedef typename FutureObjectInterface<T>::rvalue_source_type rvalue_source_type;
             typedef typename FutureObjectInterface<T>::dest_reference_type dest_reference_type;
+            typedef typename FutureObjectInterface<T>::storage_type storage_type;
             typedef typename FutureObjectInterface<T>::CallbackType CallbackType;
             
             PromptFutureObject(rvalue_source_type v)
@@ -181,17 +205,6 @@ namespace wsd {
             }
             
             virtual bool hasException() const { return m_exception_ptr; }
-
-            // Promise<> will never use this implementation.
-            virtual void setValue(rvalue_source_type /*v*/)
-            {
-                WSD_FAIL();
-            }
-
-            virtual void setException(const ExceptionPtr& /*e*/)
-            {
-                WSD_FAIL();
-            }
             
             virtual move_dest_type get() const
             {
@@ -201,7 +214,11 @@ namespace wsd {
                 return *m_value;
             }
             
-            virtual bool tryGet(dest_reference_type v) const { FutureTraits<T>::assign(v, m_value); return true; }
+            virtual bool tryGet(dest_reference_type v) const
+            {
+                FutureTraits<T>::assign(v, m_value);
+                return true;
+            }
             
             virtual void registerCallback(const CallbackType& callback)
             {
@@ -211,6 +228,11 @@ namespace wsd {
                 } catch (...) {
                     // Ingore the exception thrown by the callback.
                 }
+            }
+            
+            virtual storage_type getStorageValue() const
+            {
+                return m_value;
             }
             
         private:
@@ -342,9 +364,9 @@ namespace wsd {
                              public EnableSharedFromThis<FutureObject<T> >,
                              private FutureObjectBase {
         public:
-
             typedef typename FutureObjectInterface<T>::move_dest_type move_dest_type;
             typedef typename FutureObjectInterface<T>::rvalue_source_type rvalue_source_type;
+            typedef typename FutureObjectInterface<T>::storage_type storage_type;
             typedef typename FutureObjectInterface<T>::CallbackType CallbackType;
             typedef typename FutureObjectInterface<T>::dest_reference_type dest_reference_type;
             
@@ -424,6 +446,27 @@ namespace wsd {
                 }
             }
 
+            virtual storage_type getStorageValue() const
+            {
+                wait();
+
+                WSD_ASSERT(m_value);
+                return m_value;
+            }
+
+            virtual void setValueFromStorage(const storage_type& v)
+            {
+                {
+                    Mutex::Lock lock(m_mutex);
+                    if (m_is_done) {
+                        throwException(PromiseAlreadySatisfiedException(__FILE__, __LINE__));
+                    }
+                    FutureTraits<T>::copy(m_value, v);
+                    markFinishedInternal();
+                }
+                doPendingCallbacks();
+            }
+            
         private:
 
             // Note: this function must be called without locks, otherwise deadlock will
@@ -626,7 +669,7 @@ namespace wsd {
             typename disable_if<is_void<V> >::type run(const Future<V>& future)
             {
                 try {
-                    m_promise.setValue(future.get());
+                    m_promise.m_future->setValueFromStorage(future.m_future->getStorageValue());
                 } catch (...) {
                     m_promise.setException(currentException());
                 }
@@ -733,6 +776,7 @@ namespace wsd {
         {}
 
         template <typename R, typename U> friend class detail::SequentialCallback;
+        template <typename R> friend class detail::ForwardValue;
         friend class Promise<T>;
     };
 
@@ -834,6 +878,8 @@ namespace wsd {
         }
 
     private:
+        template <typename R> friend class detail::ForwardValue;
+
         SharedPtr<detail::FutureObjectInterface<T> > m_future;
     };
 
