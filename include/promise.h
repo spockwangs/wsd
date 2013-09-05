@@ -839,8 +839,6 @@ namespace wsd {
 
     template <>
     class Promise<void> {
-    private:
-        SharedPtr<detail::FutureObjectInterface<void> > m_future;
     public:
 
         /**
@@ -865,6 +863,8 @@ namespace wsd {
         {
             return Future<void>(m_future);
         }
+    private:
+        SharedPtr<detail::FutureObjectInterface<void> > m_future;
     };
 
 }  // namespace wsd
