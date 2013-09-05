@@ -182,9 +182,16 @@ namespace wsd {
             
             virtual bool hasException() const { return m_exception_ptr; }
 
-            // Promise<> will not use this implementation so implemented as empty.
-            virtual void setValue(rvalue_source_type /*v*/) {}
-            virtual void setException(const ExceptionPtr& /*e*/) {}
+            // Promise<> will never use this implementation.
+            virtual void setValue(rvalue_source_type /*v*/)
+            {
+                WSD_FAIL();
+            }
+
+            virtual void setException(const ExceptionPtr& /*e*/)
+            {
+                WSD_FAIL();
+            }
             
             virtual move_dest_type get() const
             {
@@ -237,9 +244,16 @@ namespace wsd {
             
             virtual bool hasException() const { return m_exception_ptr; }
 
-            // Promise<> will not use this implementation so implemented as empty.
-            virtual void set() {}
-            virtual void setException(const ExceptionPtr& /*e*/) {}
+            // Promise<> will not never this implementation.
+            virtual void set()
+            {
+                WSD_FAIL();
+            }
+            
+            virtual void setException(const ExceptionPtr& /*e*/)
+            {
+                WSD_FAIL();
+            }
             
             virtual move_dest_type get() const
             {
