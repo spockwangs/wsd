@@ -41,6 +41,24 @@ TEST(promise, do_value)
     EXPECT_THROW(promise.setValue(1), wsd::PromiseAlreadySatisfiedException);
 }
 
+void do_ref(const wsd::Future<int&>& fu)
+{
+    EXPECT_EQ(10, fu.get());
+}
+
+TEST(promise, do_ref)
+{
+    wsd::Promise<int&> promise;
+    wsd::Future<int&> future = promise.getFuture();
+    future.then(wsd::bind(&do_ref));
+
+    static int value = 10;
+    promise.setValue(value);
+    EXPECT_TRUE(future.hasValue());
+    EXPECT_EQ(10, future.get());
+    EXPECT_THROW(promise.setValue(value), wsd::PromiseAlreadySatisfiedException);
+}
+    
 void do_exception(const wsd::Future<int>& i)
 {
     EXPECT_THROW(i.get(), wsd::CurrentExceptionUnknownException);
