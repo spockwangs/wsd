@@ -33,12 +33,16 @@ namespace wsd {
 
 namespace wsd {
     
-    template<bool> struct CompileTimeError;
-    template<> struct CompileTimeError<true> {};
+    namespace detail {
+        
+        template<bool> struct CompileTimeError;
+        template<> struct CompileTimeError<true> {};
+
+    }  // namespace detail
 
 }  // namespace wsd
 
 #define STATIC_ASSERT(exp, msg)                                         \
-    { wsd::CompileTimeError<((exp) != 0)> ERROR_##msg; (void) ERROR_##msg; }
+    { ::wsd::detail::CompileTimeError<((exp) != 0)> ERROR_##msg; (void) ERROR_##msg; }
 
 #endif
