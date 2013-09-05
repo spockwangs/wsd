@@ -244,7 +244,7 @@ namespace wsd {
             
             virtual bool hasException() const { return m_exception_ptr; }
 
-            // Promise<> will not never this implementation.
+            // Promise<> will never this implementation.
             virtual void set()
             {
                 WSD_FAIL();
