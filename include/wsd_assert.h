@@ -6,16 +6,30 @@
 
 namespace wsd {
 
-    inline void assertion_failed(const char *expr, const char *function, const char *file, int line)
-    {
-        std::cerr << "at " << file << ':' << line << ": in " << function
-                  << "(): Assertion `" << expr << "' failed" << std::endl;
-        std::abort();
-    }
-}
+    namespace detail {
+
+        inline void assertion_failed(const char *expr, const char *function, const char *file, int line)
+        {
+            std::cerr << "at " << file << ':' << line << ": in " << function
+                      << "(): Assertion `" << expr << "' failed" << std::endl;
+            std::abort();
+        }
+
+        inline void should_not_reach_here(const char *function, const char *file, int line)
+        {
+            std::cerr << "at " << file << ':' << line << ": in " << function
+                      << "(): should not reach here" << std::endl;
+            std::abort();
+        }
+
+    }  // namespace detail
+
+}  // namespace wsd
 
 #define WSD_ASSERT(expr)                                                \
-    ((expr) ? ((void)0) : ::wsd::assertion_failed(#expr, __func__, __FILE__, __LINE__))
+    ((expr) ? ((void)0) : ::wsd::detail::assertion_failed(#expr, __func__, __FILE__, __LINE__))
+
+#define WSD_FAIL() (::wsd::detail::should_not_reach_here(__func__, __FILE__, __LINE__))
 
 namespace wsd {
     
