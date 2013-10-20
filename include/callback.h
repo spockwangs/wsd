@@ -1,7 +1,7 @@
 #ifndef __CALLBACK_H__
 #define __CALLBACK_H__
 
-#include "shared_ptr.h"
+#include "boost/shared_ptr.hpp"
 #include "callback_detail.h"
 
 // ---------------------------------------------------------------------------
@@ -120,7 +120,7 @@
 //
 // BINDING PARAMETERS SHARED BY THE CALLER AND THE CALLBACK
 //
-//   wsd::SharedPtr<X> p(new X());
+//   boost::shared_ptr<X> p(new X());
 //   wsd::Callback<void(void)> cb = wsd::bind(&X::foo, wsd::shared(p));
 //
 //   This specifies the object is shared by the caller and the callback. The object will
@@ -194,7 +194,7 @@ namespace wsd {
         }
         
     private:
-        SharedPtr<detail::BindStateBase> m_bind_state_ptr;
+        boost::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
         PolymorphicInvoke m_invoke;
     };
 
@@ -231,7 +231,7 @@ namespace wsd {
         }
         
     private:
-        SharedPtr<detail::BindStateBase> m_bind_state_ptr;
+        boost::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
         PolymorphicInvoke m_invoke;
     };
     
@@ -269,7 +269,7 @@ namespace wsd {
         }
         
     private:
-        SharedPtr<detail::BindStateBase> m_bind_state_ptr;
+        boost::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
         PolymorphicInvoke m_invoke;
     };
 
@@ -309,7 +309,7 @@ namespace wsd {
         }
         
     private:
-        SharedPtr<detail::BindStateBase> m_bind_state_ptr;
+        boost::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
         PolymorphicInvoke m_invoke;
     };
 
@@ -352,7 +352,7 @@ namespace wsd {
         }
         
     private:
-        SharedPtr<detail::BindStateBase> m_bind_state_ptr;
+        boost::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
         PolymorphicInvoke m_invoke;
     };
 
@@ -396,7 +396,7 @@ namespace wsd {
         }
         
     private:
-        SharedPtr<detail::BindStateBase> m_bind_state_ptr;
+        boost::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
         PolymorphicInvoke m_invoke;
     };
 
@@ -442,7 +442,7 @@ namespace wsd {
         }
         
     private:
-        SharedPtr<detail::BindStateBase> m_bind_state_ptr;
+        boost::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
         PolymorphicInvoke m_invoke;
     };
 
@@ -490,7 +490,7 @@ namespace wsd {
         }
         
     private:
-        SharedPtr<detail::BindStateBase> m_bind_state_ptr;
+        boost::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
         PolymorphicInvoke m_invoke;
     };
 
@@ -541,7 +541,7 @@ namespace wsd {
         }
         
     private:
-        SharedPtr<detail::BindStateBase> m_bind_state_ptr;
+        boost::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
         PolymorphicInvoke m_invoke;
     };
 
@@ -594,7 +594,7 @@ namespace wsd {
         }
         
     private:
-        SharedPtr<detail::BindStateBase> m_bind_state_ptr;
+        boost::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
         PolymorphicInvoke m_invoke;
     };
 

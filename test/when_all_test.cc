@@ -17,7 +17,7 @@ bool g_has_run = false;
 bool g_has_exception = false;
 
 void run_or_not_run(
-        const wsd::Future<wsd::Tuple<wsd::Future<TestClass>, wsd::Future<TestClass>, wsd::Future<TestClass> > >& future)
+        const wsd::Future<boost::tuple<wsd::Future<TestClass>, wsd::Future<TestClass>, wsd::Future<TestClass> > >& future)
 {
     g_has_run = true;
     g_has_exception = false;

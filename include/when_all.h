@@ -9,8 +9,11 @@
 
 #include "promise.h"
 #include <vector>
-#include "tuple.h"
-#include "mutex.h"
+#include "boost/tuple/tuple.hpp"
+#include "boost/thread/mutex.hpp"
+#include "boost/thread/locks.hpp"
+#include "boost/thread/lock_guard.hpp"
+#include "boost/assert.hpp"
 
 namespace wsd {
     
@@ -37,40 +40,41 @@ namespace wsd {
             size_t m_number_of_non_satisfied;
             PromiseAll m_promise_all;
             FutureAllValueType m_waiting_futures;
-            Mutex m_mutex;
+            boost::mutex m_mutex;
 
         private:
             DISALLOW_COPY_AND_ASSIGN(ParallelAllCallbackBase);
         };
 
-        // FutureAllValueType is supposed to be of type wsd::Tuple<wsd::Future, ...> or
+        // FutureAllValueType is supposed to be of type boost::tuple<wsd::Future, ...> or
         // std::vector<wsd::Future>.
         //
-        // This implementation is for wsd::Tuple<>.
+        // This implementation is for boost::tuple<>.
         template <typename FutureAllValueType>
         class ParallelAllCallback : private ParallelAllCallbackBase<FutureAllValueType> {
         public:
             typedef typename ParallelAllCallbackBase<FutureAllValueType>::PromiseAll PromiseAll;
             
             ParallelAllCallback(const PromiseAll& promise_all)
-                : ParallelAllCallbackBase<FutureAllValueType>(promise_all, FutureAllValueType::LENGTH)
+                : ParallelAllCallbackBase<FutureAllValueType>(
+                        promise_all, boost::tuples::length<FutureAllValueType>::value)
             {}
 
             virtual ~ParallelAllCallback() {}
         
             template <int N>
-            void on_future(const typename FutureAllValueType::template element<N>::type& future)
+            void on_future(const typename boost::tuples::element<N, FutureAllValueType>::type& future)
             {
                 // Note: this future must be recorded no matter what exception is thrown.
-                Mutex::Lock lock(this->m_mutex);
+                boost::unique_lock<boost::mutex> lock(this->m_mutex);
                 this->m_waiting_futures.template get<N>() = future;
-                WSD_ASSERT(this->m_number_of_non_satisfied > 0);
+                BOOST_ASSERT(this->m_number_of_non_satisfied > 0);
                 if (--this->m_number_of_non_satisfied == 0) {
-                    lock.release();
+                    lock.unlock();
                     try {
                         this->m_promise_all.setValue(this->m_waiting_futures);
                     } catch (...) {
-                        this->m_promise_all.setException(wsd::currentException());
+                        this->m_promise_all.setException(boost::current_exception());
                     }
                     return;
                 }
@@ -98,17 +102,17 @@ namespace wsd {
             void on_future(const FutureType& future, size_t idx)
             {
                 // Note: this future must be recorded no matter what exception is thrown.
-                WSD_ASSERT(idx < this->m_waiting_futures.size());
+                BOOST_ASSERT(idx < this->m_waiting_futures.size());
 
-                Mutex::Lock lock(this->m_mutex);
+                boost::unique_lock<boost::mutex> lock(this->m_mutex);
                 this->m_waiting_futures[idx] = future;
-                WSD_ASSERT(this->m_number_of_non_satisfied > 0);
+                BOOST_ASSERT(this->m_number_of_non_satisfied > 0);
                 if (--this->m_number_of_non_satisfied == 0) {
-                    lock.release();
+                    lock.unlock();
                     try {
                         this->m_promise_all.setValue(this->m_waiting_futures);
                     } catch (...) {
-                        this->m_promise_all.setException(wsd::currentException());
+                        this->m_promise_all.setException(boost::current_exception());
                     }
                     return;
                 }
@@ -122,7 +126,7 @@ namespace wsd {
         template <typename T>
         class VectorParallelCallback {
         public:
-            VectorParallelCallback(const SharedPtr<ParallelAllCallback<std::vector<Future<T> > > >& cb, size_t idx)
+            VectorParallelCallback(const boost::shared_ptr<ParallelAllCallback<std::vector<Future<T> > > >& cb, size_t idx)
                 : m_parallel_callback(cb),
                   m_idx(idx)
             {}
@@ -133,7 +137,7 @@ namespace wsd {
             }
 
         private:
-            SharedPtr<ParallelAllCallback<std::vector<Future<T> > > > m_parallel_callback;
+            boost::shared_ptr<ParallelAllCallback<std::vector<Future<T> > > > m_parallel_callback;
             size_t m_idx;
         };
         
@@ -144,30 +148,30 @@ namespace wsd {
      * the composited future satisfied.
      */
     template <typename T1, typename T2>
-    Future<Tuple<Future<T1>, Future<T2> > >
+    Future<boost::tuple<Future<T1>, Future<T2> > >
     whenAll(const Future<T1>& future1, const Future<T2>& future2)
     {
-        typedef Tuple<Future<T1>, Future<T2> > FutureAllValueType;
+        typedef boost::tuple<Future<T1>, Future<T2> > FutureAllValueType;
         typedef Promise<FutureAllValueType> PromiseAll;
         typedef detail::ParallelAllCallback<FutureAllValueType> WhenAllCallback;
 
         PromiseAll promise_all;
-        SharedPtr<WhenAllCallback> future_callback(new WhenAllCallback(promise_all));
+        boost::shared_ptr<WhenAllCallback> future_callback(new WhenAllCallback(promise_all));
         future1.then(wsd::bind(&WhenAllCallback::template on_future<0>, wsd::shared(future_callback)));
         future2.then(wsd::bind(&WhenAllCallback::template on_future<1>, wsd::shared(future_callback)));
         return promise_all.getFuture();
     }
 
     template <typename T1, typename T2, typename T3>
-    Future<Tuple<Future<T1>, Future<T2>, Future<T3> > >
+    Future<boost::tuple<Future<T1>, Future<T2>, Future<T3> > >
     whenAll(const Future<T1>& future1, const Future<T2>& future2, const Future<T3>& future3)
     {
-        typedef Tuple<Future<T1>, Future<T2>, Future<T3> > FutureAllValueType;
+        typedef boost::tuple<Future<T1>, Future<T2>, Future<T3> > FutureAllValueType;
         typedef Promise<FutureAllValueType> PromiseAll;
         typedef detail::ParallelAllCallback<FutureAllValueType> WhenAllCallback;
 
         PromiseAll promise_all;
-        SharedPtr<WhenAllCallback> future_callback(new WhenAllCallback(promise_all));
+        boost::shared_ptr<WhenAllCallback> future_callback(new WhenAllCallback(promise_all));
         future1.then(wsd::bind(&WhenAllCallback::template on_future<0>, wsd::shared(future_callback)));
         future2.then(wsd::bind(&WhenAllCallback::template on_future<1>, wsd::shared(future_callback)));
         future3.then(wsd::bind(&WhenAllCallback::template on_future<2>, wsd::shared(future_callback)));
@@ -178,14 +182,14 @@ namespace wsd {
     Future<std::vector<Future<T> > >
     whenAll(InputIterator first, InputIterator last)
     {
-        WSD_ASSERT(first != last);
+        BOOST_ASSERT(first != last);
         
         typedef std::vector<Future<T> > FutureAllValueType;
         typedef Promise<FutureAllValueType> PromiseAll;
         typedef detail::ParallelAllCallback<FutureAllValueType> WhenAllCallback;
 
         PromiseAll promise_all;
-        SharedPtr<WhenAllCallback> when_all_callback(new WhenAllCallback(promise_all, std::distance(first, last)));
+        boost::shared_ptr<WhenAllCallback> when_all_callback(new WhenAllCallback(promise_all, std::distance(first, last)));
         size_t i;
 
         for (i = 0; first != last; ++first, ++i) {

@@ -115,7 +115,7 @@ TEST(callback, owned)
 
 TEST(callback, shared)
 {
-    wsd::SharedPtr<X> p(new X(5));
+    boost::shared_ptr<X> p(new X(5));
     wsd::Callback<int()> cb = wsd::bind(&X::getX, wsd::shared(p));
     EXPECT_EQ(5, cb());
     EXPECT_EQ(5, p->getX());
@@ -431,7 +431,7 @@ TEST(callback, exception_safety)
     
     ES_ANY_THROW(wsd::bind(&run_ref)(t));
 
-    ES_ANY_THROW(wsd::bind(&TestClass::run, wsd::shared(wsd::SharedPtr<TestClass>(new TestClass()))));
+    ES_ANY_THROW(wsd::bind(&TestClass::run, wsd::shared(boost::shared_ptr<TestClass>(new TestClass()))));
     ES_ANY_THROW(wsd::bind(&TestClass::run, wsd::owned(new TestClass())));
     ES_ANY_THROW(wsd::bind(&TestClass::run, wsd::unretained(&t)));
 }
