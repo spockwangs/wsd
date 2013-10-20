@@ -7,7 +7,7 @@
 #include "promise.h"
 #include "gtest/gtest.h"
 #include "bind.h"
-#include "exception_ptr.h"
+#include "boost/exception_ptr.hpp"
 #include <iostream>
 #include "when_all.h"
 #include "es_test.h"
@@ -61,7 +61,7 @@ TEST(promise, do_ref)
     
 void do_exception(const wsd::Future<int>& i)
 {
-    EXPECT_THROW(i.get(), wsd::CurrentExceptionUnknownException);
+    EXPECT_THROW(i.get(), boost::unknown_exception);
 }
 
 TEST(promise, do_exception)
@@ -73,11 +73,11 @@ TEST(promise, do_exception)
     try {
         throw "error";
     } catch (...) {
-        promise.setException(wsd::currentException());
+        promise.setException(boost::current_exception());
     }
     EXPECT_TRUE(future.isDone());
     EXPECT_TRUE(future.hasException());
-    EXPECT_THROW(future.get(), wsd::CurrentExceptionUnknownException);
+    EXPECT_THROW(future.get(), boost::unknown_exception);
     EXPECT_THROW(promise.setValue(1), wsd::PromiseAlreadySatisfiedException);
 }
 
@@ -262,14 +262,14 @@ void getVoid(const wsd::Future<void>& f)
 
 void getException(const wsd::Future<int>& f)
 {
-    EXPECT_THROW(f.get(), wsd::WsdException);
+    EXPECT_THROW(f.get(), std::runtime_error);
     g_has_run = true;
 }
 
 TEST(promise, prompt_exception)
 {
     g_has_run = false;
-    wsd::Future<int>(wsd::copyException(wsd::WsdException())).then(wsd::bind(&getException));
+    wsd::Future<int>(boost::copy_exception(std::runtime_error(""))).then(wsd::bind(&getException));
     EXPECT_TRUE(g_has_run);
 }
 
@@ -280,9 +280,9 @@ TEST(promise, prompt_future2)
     EXPECT_TRUE(g_has_run);
 }
 
-void do_all_value(const wsd::Future<wsd::Tuple<wsd::Future<int>, wsd::Future<int> > >& p)
+void do_all_value(const wsd::Future<boost::tuple<wsd::Future<int>, wsd::Future<int> > >& p)
 {
-    const wsd::Tuple<wsd::Future<int>, wsd::Future<int> >& t = p.get();
+    const boost::tuple<wsd::Future<int>, wsd::Future<int> >& t = p.get();
     EXPECT_EQ(3, t.get<0>().get());
     EXPECT_EQ(4, t.get<1>().get());
 }
@@ -299,11 +299,11 @@ TEST(promise, when_all)
     p2.setValue(4);
 }
 
-void do_value_exception(const wsd::Future<wsd::Tuple<wsd::Future<int>, wsd::Future<int> > >& p)
+void do_value_exception(const wsd::Future<boost::tuple<wsd::Future<int>, wsd::Future<int> > >& p)
 {
-    const wsd::Tuple<wsd::Future<int>, wsd::Future<int> >& t = p.get();
+    const boost::tuple<wsd::Future<int>, wsd::Future<int> >& t = p.get();
     EXPECT_EQ(3, t.get<0>().get());
-    EXPECT_THROW(t.get<1>().get(), wsd::WsdException);
+    EXPECT_THROW(t.get<1>().get(), std::runtime_error);
 }
 
 TEST(promise, when_all_with_one_exception)
@@ -316,14 +316,14 @@ TEST(promise, when_all_with_one_exception)
     p1.setValue(3);
     sleep(1);
 
-    p2.setException(wsd::copyException(wsd::WsdException()));
+    p2.setException(boost::copy_exception(std::runtime_error("")));
 }
 
-void do_two_exceptions(const wsd::Future<wsd::Tuple<wsd::Future<int>, wsd::Future<int> > >& p)
+void do_two_exceptions(const wsd::Future<boost::tuple<wsd::Future<int>, wsd::Future<int> > >& p)
 {
-    const wsd::Tuple<wsd::Future<int>, wsd::Future<int> >& t = p.get();
-    EXPECT_THROW(t.get<0>().get(), wsd::WsdException);
-    EXPECT_THROW(t.get<1>().get(), wsd::WsdException);
+    const boost::tuple<wsd::Future<int>, wsd::Future<int> >& t = p.get();
+    EXPECT_THROW(t.get<0>().get(), std::runtime_error);
+    EXPECT_THROW(t.get<1>().get(), std::runtime_error);
 }
 
 TEST(promise, when_all_with_two_exceptions)
@@ -333,14 +333,14 @@ TEST(promise, when_all_with_two_exceptions)
 
     wsd::whenAll(p1.getFuture(), p2.getFuture()).then(wsd::bind(&do_two_exceptions));
 
-    p1.setException(wsd::copyException(wsd::WsdException()));
+    p1.setException(boost::copy_exception(std::runtime_error("")));
     sleep(1);
-    p2.setException(wsd::copyException(wsd::WsdException()));
+    p2.setException(boost::copy_exception(std::runtime_error("")));
 }
 
-void do_three_values(const wsd::Future<wsd::Tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> > >& p)
+void do_three_values(const wsd::Future<boost::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> > >& p)
 {
-    const wsd::Tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> >& t = p.get();
+    const boost::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> >& t = p.get();
     EXPECT_EQ(true, t.get<0>().get());
     EXPECT_EQ(34, t.get<1>().get());
     EXPECT_EQ("hello", t.get<2>().get());
@@ -363,11 +363,11 @@ TEST(promise, when_all_with_three_values)
 }
 
 void do_two_values_and_one_exception(
-        const wsd::Future<wsd::Tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> > >& p)
+        const wsd::Future<boost::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> > >& p)
 {
-    const wsd::Tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> >& t = p.get();
+    const boost::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> >& t = p.get();
     EXPECT_EQ(true, t.get<0>().get());
-    EXPECT_THROW(t.get<1>().get(), wsd::WsdException);
+    EXPECT_THROW(t.get<1>().get(), std::runtime_error);
     EXPECT_EQ("hello", t.get<2>().get());
 }
 
@@ -382,7 +382,7 @@ TEST(promise, when_all_with_two_values_and_one_exception)
             .then(wsd::bind(&do_two_values_and_one_exception));
 
         p1.setValue(true);
-        p2.setException(wsd::copyException(wsd::WsdException()));
+        p2.setException(boost::copy_exception(std::runtime_error("")));
         sleep(1);
         p3.setValue("hello");
     } catch (...) {}
@@ -403,12 +403,12 @@ long do_int(const wsd::Future<int>& future)
 void do_long(const wsd::Future<long>& future)
 {
     EXPECT_EQ(0xdead, future.get());
-    wsd::throwException(wsd::WsdException());
+    BOOST_THROW_EXCEPTION(std::runtime_error(""));
 }
 
 void do_exception2(const wsd::Future<void>& future)
 {
-    EXPECT_THROW(future.get(), wsd::WsdException);
+    EXPECT_THROW(future.get(), std::runtime_error);
 }
 
 TEST(promise, then)
@@ -475,7 +475,7 @@ TEST(promise, exception_safety)
     
     // Promise<void>::setException() should not throw exception.
     wsd::Promise<void> p2;
-    ES_NO_THROW(p2.setException(wsd::copyException(wsd::WsdException())));
+    ES_NO_THROW(p2.setException(boost::copy_exception(std::runtime_error(""))));
     ES_NO_THROW(p2.getFuture().isDone());
     EXPECT_TRUE(p2.getFuture().isDone());
     EXPECT_ANY_THROW(p2.getFuture().get());
@@ -489,7 +489,7 @@ TEST(promise, exception_safety)
     ES_MAY_THROW2(p3.getFuture().get(), int, std::bad_alloc);
 
     wsd::Promise<TestClass> p4;
-    ES_NO_THROW(p4.setException(wsd::copyException(wsd::WsdException())));
+    ES_NO_THROW(p4.setException(boost::copy_exception(std::runtime_error(""))));
     ES_NO_THROW(p4.getFuture().isDone());
     EXPECT_ANY_THROW(p4.getFuture().get());
     
@@ -540,7 +540,7 @@ TEST(promise, exception_safety)
         g_has_run = false;
         try {
             wsd::Promise<TestClass> p;
-            p.setException(wsd::copyException(wsd::WsdException()));
+            p.setException(boost::copy_exception(std::runtime_error("")));
             wsd::Future<TestClass> f = p.getFuture();
             f.then(wsd::bind(&run_or_not_run));
             succeeded = true;
@@ -560,7 +560,7 @@ TEST(promise, exception_safety)
             wsd::Promise<TestClass> p;
             wsd::Future<TestClass> f = p.getFuture();
             f.then(wsd::bind(&run_or_not_run));
-            p.setException(wsd::copyException(wsd::WsdException()));
+            p.setException(boost::copy_exception(std::runtime_error("")));
             succeeded = true;
             EXPECT_TRUE(g_has_run);
         } catch (std::exception& e) {
@@ -614,7 +614,7 @@ TEST(promise, exception_safety)
         g_has_run = false;
         try {
             wsd::Promise<void> p;
-            p.setException(wsd::copyException(wsd::WsdException()));
+            p.setException(boost::copy_exception(std::runtime_error("")));
             wsd::Future<void> f = p.getFuture();
             f.then(wsd::bind(&run_or_not_run_void));
             succeeded = true;
@@ -633,7 +633,7 @@ TEST(promise, exception_safety)
             wsd::Promise<void> p;
             wsd::Future<void> f = p.getFuture();
             f.then(wsd::bind(&run_or_not_run_void));
-            p.setException(wsd::copyException(wsd::WsdException()));
+            p.setException(boost::copy_exception(std::runtime_error("")));
             succeeded = true;
             EXPECT_TRUE(g_has_run);
         } catch (...) {

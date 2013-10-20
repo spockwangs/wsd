@@ -10,10 +10,12 @@
 #include <map>
 #include <utility>
 #include <iterator>
-#include "shared_ptr.h"
-#include "scoped_ptr.h"
-#include "lock.h"
-#include "rw_mutex.h"
+#include "boost/shared_ptr.hpp"
+#include "boost/scoped_ptr.hpp"
+#include "boost/thread/mutex.hpp"
+#include "boost/thread/shared_mutex.hpp"
+#include "boost/thread/locks.hpp"
+#include "wsd_assert.h"
 
 namespace wsd {
 
@@ -28,7 +30,7 @@ namespace wsd {
     private:
         struct Value;
             
-        typedef std::map<K, SharedPtr<Value>, Cmp> map_type;
+        typedef std::map<K, boost::shared_ptr<Value>, Cmp> map_type;
 
         // Concurrent operations may not be applied on this map when traversing.
         class ConstIterator;
@@ -49,26 +51,26 @@ namespace wsd {
         typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
         ConcurrentMap()
-            : m_rw_mutex(new RwMutex)
+            : m_rw_mutex(new boost::shared_mutex)
         {}
         
         template <typename InputIterator>
         ConcurrentMap(InputIterator first, InputIterator last)
-            : m_rw_mutex(new RwMutex)
+            : m_rw_mutex(new boost::shared_mutex)
         {
             for (; first != last; ++first)
-                m_map.insert(std::make_pair(first->first, SharedPtr<Value>(new Value(*first))));
+                m_map.insert(std::make_pair(first->first, boost::shared_ptr<Value>(new Value(*first))));
         }
         
         /**
          * Copies a map. The map being copied may have concurrent operations on it.
          */
         ConcurrentMap(const ConcurrentMap& o)
-            : m_rw_mutex(new RwMutex)
+            : m_rw_mutex(new boost::shared_mutex)
         {
-            RwMutex::ReadLock rlock(*o.m_rw_mutex);
+            boost::shared_lock<boost::shared_mutex> rlock(*o.m_rw_mutex);
             for (typename map_type::const_iterator it = o.m_map.begin(); it != o.m_map.end(); ++it)
-                m_map.insert(m_map.end(), std::make_pair(it->first, SharedPtr<Value>(new Value(it->second->value))));
+                m_map.insert(m_map.end(), std::make_pair(it->first, boost::shared_ptr<Value>(new Value(it->second->value))));
         }
         
         /**
@@ -81,7 +83,7 @@ namespace wsd {
 
                 // Lock on 'tmp' is not necessary because no one other than this thread
                 // can access 'tmp'.
-                RwMutex::WriteLock wlock(*m_rw_mutex);
+                boost::unique_lock<boost::shared_mutex> wlock(*m_rw_mutex);
                 m_map.swap(tmp.m_map);
             }
             return *this;
@@ -106,8 +108,7 @@ namespace wsd {
                 rhs = this;
             }
             
-            RwMutex::WriteLock wlock1(*lhs->m_rw_mutex);
-            RwMutex::WriteLock wlock2(*rhs->m_rw_mutex);
+            boost::lock(*lhs->m_rw_mutex, *rhs->m_rw_mutex);
             m_map.swap(o.m_map);
         }
         
@@ -118,7 +119,7 @@ namespace wsd {
          */
         bool empty() const
         {
-            RwMutex::ReadLock rlock(*m_rw_mutex);
+            boost::shared_lock<boost::shared_mutex> rlock(*m_rw_mutex);
             return m_map.empty();
         }
         
@@ -129,7 +130,7 @@ namespace wsd {
          */
         size_t size() const
         {
-            RwMutex::ReadLock rlock(*m_rw_mutex);
+            boost::shared_lock<boost::shared_mutex> rlock(*m_rw_mutex);
             return m_map.size();
         }
 
@@ -141,7 +142,7 @@ namespace wsd {
          */
         void clear()
         {
-            RwMutex::WriteLock wlock(*m_rw_mutex);
+            boost::unique_lock<boost::shared_mutex> wlock(*m_rw_mutex);
             m_map.clear();
         }
         
@@ -150,7 +151,7 @@ namespace wsd {
          */
         size_t count(const key_type& key) const
         {
-            RwMutex::ReadLock rlock(*m_rw_mutex);
+            boost::shared_lock<boost::shared_mutex> rlock(*m_rw_mutex);
             return m_map.count(key);
         }
         
@@ -275,7 +276,7 @@ namespace wsd {
         }
         
     private:
-        ScopedPtr<RwMutex> m_rw_mutex;
+        boost::scoped_ptr<boost::shared_mutex> m_rw_mutex;
         map_type m_map;
 
         friend bool operator==<>(const ConcurrentMap& lhs, const ConcurrentMap& rhs);
@@ -287,7 +288,7 @@ namespace wsd {
             : value(v)
         {}
         
-        RwMutex rw_mutex;
+        boost::shared_mutex rw_mutex;
         value_type value;
     };
 
@@ -327,16 +328,16 @@ namespace wsd {
     protected:
 
         // invariant: if m_value is true then we have acquired the lock on it.
-        SharedPtr<Value> m_value;
+        boost::shared_ptr<Value> m_value;
 
     private:
-        void acquire(const SharedPtr<Value>& o)
+        void acquire(const boost::shared_ptr<Value>& o)
         {
             WSD_ASSERT(o);
             if (m_value != o) {
                 release();
                 m_value = o;
-                m_value->rw_mutex.readLock();
+                m_value->rw_mutex.lock_shared();
             }
         }
         
@@ -359,13 +360,13 @@ namespace wsd {
         }
 
     private:
-        void acquire(const SharedPtr<Value>& o)
+        void acquire(const boost::shared_ptr<Value>& o)
         {
             WSD_ASSERT(o);
             if (this->m_value != o) {
                 this->release();
                 this->m_value = o;
-                this->m_value->rw_mutex.writeLock();
+                this->m_value->rw_mutex.lock();
             }
         }
 
@@ -378,7 +379,7 @@ namespace wsd {
         WSD_ASSERT(const_accessor != NULL);
         
         const_accessor->release();
-        RwMutex::ReadLock rlock(*m_rw_mutex);
+        boost::shared_lock<boost::shared_mutex> rlock(*m_rw_mutex);
         typename map_type::const_iterator it = m_map.find(key);
         if (it == m_map.end())
             return false;
@@ -393,7 +394,7 @@ namespace wsd {
         WSD_ASSERT(accessor != NULL);
         
         accessor->release();
-        RwMutex::ReadLock rlock(*m_rw_mutex);
+        boost::shared_lock<boost::shared_mutex> rlock(*m_rw_mutex);
         typename map_type::const_iterator it = m_map.find(key);
         if (it == m_map.end())
             return false;
@@ -405,17 +406,17 @@ namespace wsd {
     template <typename K, typename V, typename Cmp>
     bool ConcurrentMap<K, V, Cmp>::insert(const value_type& value)
     {
-        RwMutex::WriteLock wlock(*m_rw_mutex);
-        return m_map.insert(std::make_pair(value.first, SharedPtr<Value>(new Value(value)))).second;
+        boost::unique_lock<boost::shared_mutex> wlock(*m_rw_mutex);
+        return m_map.insert(std::make_pair(value.first, boost::shared_ptr<Value>(new Value(value)))).second;
     }
 
     template <typename K, typename V, typename Cmp>
     bool ConcurrentMap<K, V, Cmp>::insert(const value_type& value, ConstAccessor *const_accessor)
     {
         WSD_ASSERT(const_accessor != NULL);
-        RwMutex::WriteLock wlock(*m_rw_mutex);
+        boost::unique_lock<boost::shared_mutex> wlock(*m_rw_mutex);
         const std::pair<typename map_type::iterator, bool>& r =
-            m_map.insert(std::make_pair(value.first, SharedPtr<Value>(new Value(value))));
+            m_map.insert(std::make_pair(value.first, boost::shared_ptr<Value>(new Value(value))));
         const_accessor->acquire(r.first->second);
         return r.second;
     }
@@ -430,9 +431,9 @@ namespace wsd {
     bool ConcurrentMap<K, V, Cmp>::insert(const value_type& value, Accessor *accessor)
     {
         WSD_ASSERT(accessor != NULL);
-        RwMutex::WriteLock wlock(*m_rw_mutex);
+        boost::unique_lock<boost::shared_mutex> wlock(*m_rw_mutex);
         const std::pair<typename map_type::iterator, bool>& r =
-            m_map.insert(std::make_pair(value.first, SharedPtr<Value>(new Value(value))));
+            m_map.insert(std::make_pair(value.first, boost::shared_ptr<Value>(new Value(value))));
         accessor->acquire(r.first->second);
         return r.second;
     }
@@ -446,7 +447,7 @@ namespace wsd {
     template <typename K, typename V, typename Cmp>
     bool ConcurrentMap<K, V, Cmp>::erase(const key_type& key)
     {
-        RwMutex::WriteLock wlock(*m_rw_mutex);
+        boost::unique_lock<boost::shared_mutex> wlock(*m_rw_mutex);
         return m_map.erase(key) > 0;
     }
 
@@ -488,8 +489,7 @@ namespace wsd {
             r = &lhs;
         }
             
-        RwMutex::ReadLock rlock1(*l->m_rw_mutex);
-        RwMutex::ReadLock rlock2(*r->m_rw_mutex);
+        boost::lock(*l->m_rw_mutex, *r->m_rw_mutex);
         return lhs.m_map == rhs.m_map;
     }
     

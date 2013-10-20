@@ -36,7 +36,7 @@ public:
 TEST(local_cache, construct)
 {
     LocalCacheImp cache(10);
-    wsd::SharedPtr<const string> v = cache.get(1);
+    boost::shared_ptr<const string> v = cache.get(1);
     EXPECT_EQ("1", *v);
     EXPECT_EQ("1", *cache.get(1));
 
@@ -59,7 +59,7 @@ TEST(local_cache, put)
     cache.put(3, "xyz");
     EXPECT_EQ("xyz", *cache.get(3));
 
-    wsd::SharedPtr<const string> v = cache.get(1);
+    boost::shared_ptr<const string> v = cache.get(1);
     EXPECT_EQ("123", *v);
     cache.put(1, "xxx");
     EXPECT_EQ("xxx", *cache.get(1));

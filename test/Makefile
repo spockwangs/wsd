@@ -28,53 +28,26 @@ CPPFLAGS += -I$(GTEST_DIR)/include -I$(USER_DIR)/include
 CXXFLAGS += -g -W -Wall -Wextra 
 
 # Flags passed to the linker.
-LDFLAGS += -lpthread
+LDFLAGS += -lboost_thread -lpthread
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = scoped_ptr_test \
-	shared_ptr_test \
-	callback_test \
+TESTS = callback_test \
 	url_test \
-	shared_array_test \
-	template_util_test \
-	exception_test \
-	tss_test \
-	scoped_array_test \
-	checked_delete_test \
-	tuple_test  \
 	promise_test \
-	exception_ptr_test \
 	when_all_test \
 	concurrent_map_test \
-	tick_count_test \
 	local_cache_test \
 	singleton_test
 
-HEADER_TESTS = shared_ptr_header_test.o \
-	shared_array_header_test.o \
-	scoped_array_header_test.o \
-	scoped_ptr_header_test.o \
-	exception_header_test.o \
-	exception_ptr_header_test.o \
-	checked_delete_header_test.o \
-	template_util_header_test.o \
-	bind_header_test.o \
+HEADER_TESTS = bind_header_test.o \
 	callback_header_test.o \
-	cond_header_test.o \
-	mutex_header_test.o \
-	enable_shared_from_this_header_test.o \
-	lock_header_test.o \
 	promise_header_test.o \
-	tss_header_test.o \
-	tuple_header_test.o \
 	url_header_test.o \
 	when_all_header_test.o \
 	wsd_assert_header_test.o \
 	wsd_magic_header_test.o \
 	concurrent_map_header_test.o \
-	rw_mutex_header_test.o \
-	tick_count_header_test.o \
 	local_cache_header_test.o \
 	singleton_header_test.o
 
@@ -124,43 +97,13 @@ gtest_main.a : gtest-all.o gtest_main.o
 # gtest_main.a, depending on whether it defines its own main()
 # function.
 
-scoped_ptr_test : scoped_ptr_test.o gtest_main.a es_test.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
-shared_ptr_test : shared_ptr_test.o gtest_main.a es_test.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
 callback_test : callback_test.o gtest_main.a es_test.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 url_test : url_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
-shared_array_test : shared_array_test.o gtest_main.a $(USER_DIR)/src/libwsd.a es_test.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
-template_util_test : template_util_test.o gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
-exception_test : exception_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
-tss_test : tss_test.o gtest_main.a $(USER_DIR)/src/libwsd.a es_test.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
-scoped_array_test : scoped_array_test.o gtest_main.a $(USER_DIR)/src/libwsd.a es_test.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
-checked_delete_test : checked_delete_test.o makex.o gtest_main.a $(USER_DIR)/src/libwsd.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
-tuple_test : tuple_test.o gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
 promise_test : promise_test.o gtest_main.a $(USER_DIR)/src/libwsd.a es_test.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
-exception_ptr_test : exception_ptr_test.o gtest_main.a $(USER_DIR)/src/libwsd.a es_test.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 when_all_test : when_all_test.o gtest_main.a $(USER_DIR)/src/libwsd.a es_test.o
@@ -168,9 +111,6 @@ when_all_test : when_all_test.o gtest_main.a $(USER_DIR)/src/libwsd.a es_test.o
 
 concurrent_map_test : concurrent_map_test.o gtest_main.a $(USER_DIR)/src/libwsd.a es_test.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
-
-tick_count_test : tick_count_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -lrt -o $@
 
 local_cache_test : local_cache_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -lrt -o $@

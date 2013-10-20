@@ -10,9 +10,9 @@
 #include <map>
 #include <list>
 #include <utility>
-#include "shared_ptr.h"
-#include "mutex.h"
-#include "exception_ptr.h"
+#include "boost/shared_ptr.hpp"
+#include "boost/exception_ptr.hpp"
+#include "boost/thread/mutex.hpp"
 #include "promise.h"
 #include "wsd_magic.h"
 
@@ -32,15 +32,15 @@ namespace wsd {
          * Returns the value associated with the key in the cache. If not available it
          * will be loaded and returned.
          *
-         * Note: it will never return a NULL SharedPtr<>.
+         * Note: it will never return a NULL boost::shared_ptr<>.
          */
-        SharedPtr<const V> get(K key);
+        boost::shared_ptr<const V> get(K key);
 
         void put(const K& key, const V& value);
 
         size_t size() const
         {
-            Mutex::Lock lock(m_mutex);
+            boost::lock_guard<boost::mutex> lock(m_mutex);
             return m_map_storage.size();
         }
         
@@ -52,13 +52,13 @@ namespace wsd {
         typedef typename map_storage_type::value_type Entry;
         struct CacheValue;
         struct MapValueType {
-            MapValueType(const SharedPtr<CacheValue>& cache_value)
+            MapValueType(const boost::shared_ptr<CacheValue>& cache_value)
                 : value_ptr(cache_value),
                   next(0),
                   prev(0)
             {}
             
-            SharedPtr<CacheValue> value_ptr;
+            boost::shared_ptr<CacheValue> value_ptr;
             typename map_storage_type::value_type *next;
             typename map_storage_type::value_type *prev;
         };
@@ -70,7 +70,7 @@ namespace wsd {
             {}
             
             virtual ~CacheValue() {}
-            virtual SharedPtr<const V> get() = 0;
+            virtual boost::shared_ptr<const V> get() = 0;
             virtual bool isLoading() const = 0;
             virtual bool isValid() const = 0;
 
@@ -93,7 +93,7 @@ namespace wsd {
         
         class UpdateLoadingCacheValue {
         public:
-            UpdateLoadingCacheValue(const SharedPtr<LoadingCacheValue>& loading_cache_value)
+            UpdateLoadingCacheValue(const boost::shared_ptr<LoadingCacheValue>& loading_cache_value)
                 : m_loading_cache_value(loading_cache_value)
             {}
 
@@ -101,14 +101,14 @@ namespace wsd {
             {
                 try {
                     const V& v = future.get();
-                    m_loading_cache_value->set(SharedPtr<V>(new V(v)));
+                    m_loading_cache_value->set(boost::shared_ptr<V>(new V(v)));
                     m_loading_cache_value->setWriteTime(getNow());
                 } catch (...) {
-                    m_loading_cache_value->setException(currentException());
+                    m_loading_cache_value->setException(boost::current_exception());
                 }
             }
 
-            SharedPtr<LoadingCacheValue> m_loading_cache_value;
+            boost::shared_ptr<LoadingCacheValue> m_loading_cache_value;
         };
 
         class AccessQueue {
@@ -141,25 +141,25 @@ namespace wsd {
         
         void removeEntry(Entry *e);
         
-        SharedPtr<const V> scheduleRefresh(K key, const SharedPtr<CacheValue>& old_value);
+        boost::shared_ptr<const V> scheduleRefresh(K key, const boost::shared_ptr<CacheValue>& old_value);
         
-        SharedPtr<V> refresh(K key);
+        boost::shared_ptr<V> refresh(K key);
         
-        SharedPtr<LoadingCacheValue> insertLoadingValue(K key);
+        boost::shared_ptr<LoadingCacheValue> insertLoadingValue(K key);
         
         Future<V> loadAsync(const K& key,
-                            const SharedPtr<LoadingCacheValue>& loading_cache_value);
+                            const boost::shared_ptr<LoadingCacheValue>& loading_cache_value);
 
         static long getNow()
         {
             struct timeval tv;
             int err = gettimeofday(&tv, NULL);
             if (err)
-                throw SyscallException(__FILE__, __LINE__, err);
+                BOOST_THROW_EXCEPTION(std::runtime_error(""));
             return tv.tv_sec * 1000 + tv.tv_usec/1000;
         }
         
-        Mutex m_mutex;
+        mutable boost::mutex m_mutex;
         size_t m_capacity;
         map_storage_type m_map_storage;
         AccessQueue m_access_queue;
@@ -173,7 +173,7 @@ namespace wsd {
             : m_value(new V(v))
         {}
             
-        virtual SharedPtr<const V> get()
+        virtual boost::shared_ptr<const V> get()
         {
             return m_value;
         }
@@ -189,17 +189,17 @@ namespace wsd {
         }
 
     private:
-        SharedPtr<V> m_value;
+        boost::shared_ptr<V> m_value;
     };
         
     template <typename K, typename V>
     class LocalCache<K, V>::LoadingCacheValue : public LocalCache::CacheValue {
     public:
-        LoadingCacheValue(const SharedPtr<CacheValue>& old_value = SharedPtr<CacheValue>())
+        LoadingCacheValue(const boost::shared_ptr<CacheValue>& old_value = boost::shared_ptr<CacheValue>())
             : m_old_value(old_value)
         {}
         
-        virtual SharedPtr<const V> get()
+        virtual boost::shared_ptr<const V> get()
         {
             return m_promise.getFuture().get();
         }
@@ -211,42 +211,42 @@ namespace wsd {
             
         virtual bool isValid() const
         {
-            Future<SharedPtr<V> > future = m_promise.getFuture();
+            Future<boost::shared_ptr<V> > future = m_promise.getFuture();
             if (future.isDone() && future.hasException())
                 return false;
             return true;
         }
         
-        void set(const SharedPtr<V>& v)
+        void set(const boost::shared_ptr<V>& v)
         {
             m_promise.setValue(v);
         }
 
-        void setException(const ExceptionPtr& e)
+        void setException(const boost::exception_ptr& e)
         {
             m_promise.setException(e);
         }
 
-        SharedPtr<CacheValue> getOldValue() const
+        boost::shared_ptr<CacheValue> getOldValue() const
         {
             return m_old_value;
         }
             
     private:
-        SharedPtr<CacheValue> m_old_value;
-        Promise<SharedPtr<V> > m_promise;
+        boost::shared_ptr<CacheValue> m_old_value;
+        Promise<boost::shared_ptr<V> > m_promise;
     };
 
     template <typename K, typename V>
-    SharedPtr<const V> LocalCache<K, V>::get(K key)
+    boost::shared_ptr<const V> LocalCache<K, V>::get(K key)
     {
-        Mutex::Lock lock(m_mutex);
+        boost::unique_lock<boost::mutex> lock(m_mutex);
         typename map_storage_type::iterator it = m_map_storage.find(key);
         if (it != m_map_storage.end()) {
-            SharedPtr<CacheValue> v = it->second.value_ptr;
+            boost::shared_ptr<CacheValue> v = it->second.value_ptr;
             if (v->isValid()) {
                 recordAccess(it);
-                lock.release();
+                lock.unlock();
                 return scheduleRefresh(key, v);
             }
 
@@ -254,29 +254,29 @@ namespace wsd {
         }
 
         // Not found; insert a new one.
-        SharedPtr<LoadingCacheValue> loading_cache_value(new LoadingCacheValue());
+        boost::shared_ptr<LoadingCacheValue> loading_cache_value(new LoadingCacheValue());
         it = m_map_storage.insert(std::make_pair(key, MapValueType(loading_cache_value))).first;
         m_access_queue.add(&*it);
         recordAccess(it);
         evict();
-        lock.release();
+        lock.unlock();
         try {
             const V& v = load(key);
-            loading_cache_value->set(SharedPtr<V>(new V(v)));
+            loading_cache_value->set(boost::shared_ptr<V>(new V(v)));
             loading_cache_value->setWriteTime(getNow());
         } catch (...) {
-            loading_cache_value->setException(currentException());
+            loading_cache_value->setException(boost::current_exception());
         }
         return loading_cache_value->get();
     }
 
     template <typename K, typename V>
-    SharedPtr<const V> LocalCache<K, V>::scheduleRefresh(K key, const SharedPtr<CacheValue>& old_value)
+    boost::shared_ptr<const V> LocalCache<K, V>::scheduleRefresh(K key, const boost::shared_ptr<CacheValue>& old_value)
     {
         long now = getNow();
         if (m_refreshMilli > 0 && (now - old_value->getWriteTime()) > m_refreshMilli
                 && !old_value->isLoading()) {
-            SharedPtr<const V> new_value = refresh(key);
+            boost::shared_ptr<const V> new_value = refresh(key);
             if (new_value)
                 return new_value;
         }
@@ -284,49 +284,49 @@ namespace wsd {
     }
             
     template <typename K, typename V>
-    SharedPtr<V> LocalCache<K, V>::refresh(K key)
+    boost::shared_ptr<V> LocalCache<K, V>::refresh(K key)
     {
-        SharedPtr<LoadingCacheValue> loading_cache_value = insertLoadingValue(key);
+        boost::shared_ptr<LoadingCacheValue> loading_cache_value = insertLoadingValue(key);
         if (!loading_cache_value)
-            return SharedPtr<V>();
+            return boost::shared_ptr<V>();
 
         Future<V> result = loadAsync(key, loading_cache_value);
         if (result.isDone()) {
             try {
-                return SharedPtr<V>(new V(result.get()));
+                return boost::shared_ptr<V>(new V(result.get()));
             } catch (...) {
             }
         }
-        return SharedPtr<V>();
+        return boost::shared_ptr<V>();
     }
 
     template <typename K, typename V>
-    SharedPtr<typename LocalCache<K, V>::LoadingCacheValue> LocalCache<K, V>::insertLoadingValue(K key)
+    boost::shared_ptr<typename LocalCache<K, V>::LoadingCacheValue> LocalCache<K, V>::insertLoadingValue(K key)
     {
-        Mutex::Lock lock(m_mutex);
+        boost::lock_guard<boost::mutex> lock(m_mutex);
         typename map_storage_type::iterator it = m_map_storage.find(key);
         if (it != m_map_storage.end()) {
             // Found an existing entry.
 
-            const SharedPtr<CacheValue>& value = it->second.value_ptr;
+            const boost::shared_ptr<CacheValue>& value = it->second.value_ptr;
             if (value->isLoading())
-                return SharedPtr<typename LocalCache<K, V>::LoadingCacheValue>();
+                return boost::shared_ptr<typename LocalCache<K, V>::LoadingCacheValue>();
 
-            SharedPtr<LoadingCacheValue> loading_cache_value(new LoadingCacheValue(value));
+            boost::shared_ptr<LoadingCacheValue> loading_cache_value(new LoadingCacheValue(value));
             it->second.value_ptr = loading_cache_value;
             return loading_cache_value;
         }
 
-        SharedPtr<LoadingCacheValue> loading_cache_value(new LoadingCacheValue());
+        boost::shared_ptr<LoadingCacheValue> loading_cache_value(new LoadingCacheValue());
         m_map_storage.insert(std::make_pair(key, MapValueType(loading_cache_value)));
         return loading_cache_value;
     }
     
     template <typename K, typename V>
     Future<V> LocalCache<K, V>::loadAsync(const K& key,
-                                          const SharedPtr<LoadingCacheValue>& loading_cache_value)
+                                          const boost::shared_ptr<LoadingCacheValue>& loading_cache_value)
     {
-        const SharedPtr<CacheValue>& old_value = loading_cache_value->getOldValue();
+        const boost::shared_ptr<CacheValue>& old_value = loading_cache_value->getOldValue();
         Future<V> future;
         if (old_value) {
             future = reload(key, *old_value->get());
@@ -341,7 +341,7 @@ namespace wsd {
     template <typename K, typename V>
     void LocalCache<K, V>::put(const K& key, const V& value)
     {
-        Mutex::Lock lock(m_mutex);
+        boost::lock_guard<boost::mutex> lock(m_mutex);
         typename map_storage_type::iterator it = m_map_storage.find(key);
         if (it != m_map_storage.end()) {
             recordAccess(it);
@@ -352,7 +352,7 @@ namespace wsd {
         }
 
         // Not found; insert a new one.
-        SharedPtr<CacheValue> loaded_cache_value(new LoadedCacheValue(value));
+        boost::shared_ptr<CacheValue> loaded_cache_value(new LoadedCacheValue(value));
         loaded_cache_value->setWriteTime(getNow());
         it = m_map_storage.insert(std::make_pair(key, MapValueType(loaded_cache_value))).first;
         m_access_queue.add(&*it);
@@ -391,7 +391,7 @@ namespace wsd {
     {
         Entry *prev = e->second.prev;
         Entry *next = e->second.next;
-        WSD_ASSERT(prev && next);
+        BOOST_ASSERT(prev && next);
 
         if (m_head == e) {
             if (m_head->second.next == e) {
@@ -439,11 +439,11 @@ namespace wsd {
     template <typename K, typename V>
     void LocalCache<K, V>::removeEntry(Entry *e)
     {
-        WSD_ASSERT(e);
+        BOOST_ASSERT(e);
 
         m_access_queue.remove(e);
         size_t n = m_map_storage.erase(e->first);
-        WSD_ASSERT(n == 1);
+        BOOST_ASSERT(n == 1);
     }
 
 }  // namespace wsd

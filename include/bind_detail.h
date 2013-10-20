@@ -2,11 +2,16 @@
 #define __BIND_DETAIL_H__
 
 #include "callback_detail.h"
+#include "boost/type_traits/integral_constant.hpp"
 
 namespace wsd {
 
     namespace detail {
 
+        template <typename T> struct is_non_const_reference : ::boost::false_type {};
+        template <typename T> struct is_non_const_reference<T&> : ::boost::true_type {};
+        template <typename T> struct is_non_const_reference<const T&> : ::boost::false_type {};
+        
         // FunctorAdapter<> abstracts away the diff syntaxes of calling functions or class methods.
         //
         // The following specializes for arities 0 to 9.
@@ -698,12 +703,12 @@ namespace wsd {
         template <typename T>
         struct SharedWrapper {
         public:
-            explicit SharedWrapper(const SharedPtr<T>& p)
+            explicit SharedWrapper(const boost::shared_ptr<T>& p)
                 : m_ptr(p)
             { }
             T *get() const { return m_ptr.get(); }
         private:
-            SharedPtr<T> m_ptr;
+            boost::shared_ptr<T> m_ptr;
         };
         
         // Unwrap the stored parameters for the wrappers above.

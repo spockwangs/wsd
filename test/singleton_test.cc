@@ -20,11 +20,11 @@ public:
 TEST(Singleton, constructor)
 {
     // Test that a instance is created.
-    wsd::SharedPtr<TestClass> p1 = wsd::Singleton<TestClass>::getInstance();
+    boost::shared_ptr<TestClass> p1 = wsd::Singleton<TestClass>::getInstance();
     EXPECT_TRUE(p1);
     
     // Test that 2 instances are the same.
-    wsd::SharedPtr<TestClass> p2 = wsd::Singleton<TestClass>::getInstance();
+    boost::shared_ptr<TestClass> p2 = wsd::Singleton<TestClass>::getInstance();
     EXPECT_EQ(p1, p2);
     EXPECT_TRUE(p1->m_p);
     EXPECT_EQ(p1->m_p, p2->m_p);
