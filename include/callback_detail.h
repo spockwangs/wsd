@@ -1,7 +1,7 @@
 #ifndef __CALLBACK_DETAIL_H__
 #define __CALLBACK_DETAIL_H__
 
-#include "scoped_ptr.h"
+#include "boost/scoped_ptr.hpp"
 
 namespace wsd {
 
@@ -51,9 +51,9 @@ namespace wsd {
 
         // Parameter traits for movable-but-not-copyable scopers.
         template <typename T>
-        struct CallbackParamTraits<ScopedPtr<T> > {
-            typedef ScopedPtr<T> ForwardType;
-            typedef ScopedPtr<T> StorageType;
+        struct CallbackParamTraits<boost::scoped_ptr<T> > {
+            typedef boost::scoped_ptr<T> ForwardType;
+            typedef boost::scoped_ptr<T> StorageType;
         };
 
     } // namespace detail

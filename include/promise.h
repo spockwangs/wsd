@@ -8,52 +8,32 @@
 #define __PROMISE_H__
 
 #include "callback.h"
-#include "exception_ptr.h"
-#include <pthread.h>
 #include <list>
 #include "bind.h"
-#include "enable_shared_from_this.h"
-#include "lock.h"
-#include "cond.h"
-#include "shared_ptr.h"
-#include "wsd_assert.h"
+#include "boost/exception_ptr.hpp"
+#include "boost/enable_shared_from_this.hpp"
+#include "boost/shared_ptr.hpp"
+#include "boost/throw_exception.hpp"
+#include "boost/thread/condition_variable.hpp"
+#include "boost/type_traits.hpp"
+#include "boost/static_assert.hpp"
+#include "boost/assert.hpp"
 #include "wsd_magic.h"
-#include "template_util.h"
 
 namespace wsd {
 
-    class PromiseAlreadySatisfiedException : public WsdException {
-    public:
-
-        PromiseAlreadySatisfiedException(const char *filename, int line)
-            : WsdException(filename, line)
-        {}
-        
-    protected:
-
-        virtual const char *name() const
-        {
-            return "PromiseAlreadySatisfiedException";
-        }
+    class PromiseAlreadySatisfiedException : public std::exception,
+                                             public boost::exception {
     };
 
-    class FutureUninitialized : public WsdException {
-    public:
-        FutureUninitialized(const char *filename, int line)
-            : WsdException(filename, line)
-        {}
-
-    protected:
-        virtual const char *name() const
-        {
-            return "FutureUninitialized";
-        }
+    class FutureUninitialized : public std::exception,
+                                public boost::exception {
     };
     
     template <typename T> class Future;
 
-    template <typename T> struct is_future_type : false_type {};
-    template <typename T> struct is_future_type<Future<T> > : true_type {};
+    template <typename T> struct is_future_type : ::boost::false_type {};
+    template <typename T> struct is_future_type<Future<T> > : ::boost::true_type {};
 
     template <typename T> class Promise;
     
@@ -74,7 +54,7 @@ namespace wsd {
             // Use shared pointer to enable sharing (and avoid copying) of the resolved
             // value between two chained futures and improve the performance. See `copy()`
             // of `FutureTraits`, and its use in `ForwardValue` below.
-            typedef SharedPtr<T> storage_type;
+            typedef boost::shared_ptr<T> storage_type;
             typedef const T& rvalue_source_type;
             typedef const T& move_dest_type;
             typedef T& dest_reference_type;
@@ -131,7 +111,7 @@ namespace wsd {
             typedef typename FutureTraits<T>::move_dest_type move_dest_type;
             typedef typename FutureTraits<T>::dest_reference_type dest_reference_type;
             typedef typename FutureTraits<T>::storage_type storage_type;
-            typedef Callback<void(const SharedPtr<FutureObjectInterface>&)> CallbackType;
+            typedef Callback<void(const boost::shared_ptr<FutureObjectInterface>&)> CallbackType;
             
             virtual ~FutureObjectInterface() {}
 
@@ -140,21 +120,21 @@ namespace wsd {
             virtual bool hasException() const = 0;
 
             // Prompt futures will never use these.
-            virtual void setValue(rvalue_source_type /*v*/) { WSD_FAIL(); }
-            virtual void setException(const ExceptionPtr& /*e*/) { WSD_FAIL(); }
+            virtual void setValue(rvalue_source_type /*v*/) { BOOST_ASSERT(false); }
+            virtual void setException(const boost::exception_ptr& /*e*/) { BOOST_ASSERT(false); }
 
             virtual move_dest_type get() const = 0;
             virtual bool tryGet(dest_reference_type v) const = 0;
             virtual void registerCallback(const CallbackType& callback) = 0;
             virtual storage_type getStorageValue() const = 0;
-            virtual void setValueFromStorage(const storage_type& /*v*/) { WSD_FAIL(); }
+            virtual void setValueFromStorage(const storage_type& /*v*/) { BOOST_ASSERT(false); }
         };
             
         template <>
         class FutureObjectInterface<void> {
         public:
             typedef FutureTraits<void>::move_dest_type move_dest_type;
-            typedef Callback<void(const SharedPtr<FutureObjectInterface>&)> CallbackType;
+            typedef Callback<void(const boost::shared_ptr<FutureObjectInterface>&)> CallbackType;
             
             virtual ~FutureObjectInterface() {}
 
@@ -163,8 +143,8 @@ namespace wsd {
             virtual bool hasException() const = 0;
 
             // Prompt futures will never use these.
-            virtual void set() { WSD_FAIL(); }
-            virtual void setException(const ExceptionPtr& /*e*/) { WSD_FAIL(); }
+            virtual void set() { BOOST_ASSERT(false); }
+            virtual void setException(const boost::exception_ptr& /*e*/) { BOOST_ASSERT(false); }
 
             virtual move_dest_type get() const = 0;
             virtual void registerCallback(const CallbackType& callback) = 0;
@@ -176,7 +156,7 @@ namespace wsd {
         // See section 2.6 of [http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3327.pdf].
         template <typename T>
         class PromptFutureObject : public FutureObjectInterface<T>,
-                                   public EnableSharedFromThis<PromptFutureObject<T> > {
+                                   public boost::enable_shared_from_this<PromptFutureObject<T> > {
         public:
             typedef typename FutureObjectInterface<T>::move_dest_type move_dest_type;
             typedef typename FutureObjectInterface<T>::rvalue_source_type rvalue_source_type;
@@ -189,7 +169,7 @@ namespace wsd {
                 FutureTraits<T>::init(m_value, v);
             }
 
-            PromptFutureObject(const ExceptionPtr& e)
+            PromptFutureObject(const boost::exception_ptr& e)
                 : m_exception_ptr(e)
             {}
             
@@ -208,9 +188,9 @@ namespace wsd {
             
             virtual move_dest_type get() const
             {
-                WSD_ASSERT(m_exception_ptr || m_value);
+                BOOST_ASSERT(m_exception_ptr || m_value);
                 if (m_exception_ptr)
-                    m_exception_ptr->rethrow();
+                    boost::rethrow_exception(m_exception_ptr);
                 return *m_value;
             }
             
@@ -222,9 +202,9 @@ namespace wsd {
             
             virtual void registerCallback(const CallbackType& callback)
             {
-                WSD_ASSERT(callback);
+                BOOST_ASSERT(callback);
                 try {
-                    callback(this->sharedFromThis());
+                    callback(this->shared_from_this());
                 } catch (...) {
                     // Ingore the exception thrown by the callback.
                 }
@@ -237,19 +217,19 @@ namespace wsd {
             
         private:
             typename FutureTraits<T>::storage_type m_value;
-            ExceptionPtr m_exception_ptr;
+            boost::exception_ptr m_exception_ptr;
         };
         
         template <>
         class PromptFutureObject<void> : public FutureObjectInterface<void>,
-                                         public EnableSharedFromThis<PromptFutureObject<void> > {
+                                         public boost::enable_shared_from_this<PromptFutureObject<void> > {
         public:
             typedef FutureObjectInterface<void>::move_dest_type move_dest_type;
             typedef FutureObjectInterface<void>::CallbackType CallbackType;
             
             PromptFutureObject() {}
 
-            PromptFutureObject(const ExceptionPtr& e)
+            PromptFutureObject(const boost::exception_ptr& e)
                 : m_exception_ptr(e)
             {}
             
@@ -269,32 +249,32 @@ namespace wsd {
             // Promise<> will never this implementation.
             virtual void set()
             {
-                WSD_FAIL();
+                BOOST_ASSERT(false);
             }
             
-            virtual void setException(const ExceptionPtr& /*e*/)
+            virtual void setException(const boost::exception_ptr& /*e*/)
             {
-                WSD_FAIL();
+                BOOST_ASSERT(false);
             }
             
             virtual move_dest_type get() const
             {
                 if (m_exception_ptr)
-                    m_exception_ptr->rethrow();
+                    boost::rethrow_exception(m_exception_ptr);
             }
             
             virtual void registerCallback(const CallbackType& callback)
             {
-                WSD_ASSERT(callback);
+                BOOST_ASSERT(callback);
                 try {
-                    callback(this->sharedFromThis());
+                    callback(this->shared_from_this());
                 } catch (...) {
                     // Ingore the exception thrown by the callback.
                 }
             }
             
         private:
-            ExceptionPtr m_exception_ptr;
+            boost::exception_ptr m_exception_ptr;
         };
 
         struct FutureObjectBase {
@@ -306,28 +286,28 @@ namespace wsd {
             
             bool isDone() const
             {
-                Mutex::Lock lock(m_mutex);
+                boost::lock_guard<boost::mutex> lock(m_mutex);
                 return m_is_done;
             }
             
             bool hasValue() const
             {
-                Mutex::Lock lock(m_mutex);
+                boost::lock_guard<boost::mutex> lock(m_mutex);
                 return m_is_done && !m_exception_ptr;
             }
 
             bool hasException() const
             {
-                Mutex::Lock lock(m_mutex);
+                boost::lock_guard<boost::mutex> lock(m_mutex);
                 return m_is_done && m_exception_ptr;
             }
             
-            void markFinishedWithException(const ExceptionPtr& e)
+            void markFinishedWithException(const boost::exception_ptr& e)
             {
-                WSD_ASSERT(e);
-                Mutex::Lock lock(m_mutex);
+                BOOST_ASSERT(e);
+                boost::lock_guard<boost::mutex> lock(m_mutex);
                 if (m_is_done) {
-                    throw PromiseAlreadySatisfiedException(__FILE__, __LINE__);
+                    BOOST_THROW_EXCEPTION(PromiseAlreadySatisfiedException());
                 }
                 m_exception_ptr = e;
                 markFinishedInternal();
@@ -336,32 +316,32 @@ namespace wsd {
             void markFinishedInternal()
             {
                 m_is_done = true;
-                m_cond.broadcast();
+                m_cond.notify_all();
             }
 
             void wait() const
             {
                 {
-                    Mutex::Lock lock(m_mutex);
+                    boost::unique_lock<boost::mutex> lock(m_mutex);
                     while (!m_is_done) {
                         // This promise is not satisfied yet. So we wait.
-                        m_cond.wait(m_mutex);
+                        m_cond.wait(lock);
                     }
                 }
 
                 if (m_exception_ptr)
-                    m_exception_ptr->rethrow();
+                    boost::rethrow_exception(m_exception_ptr);
             }
 
-            Mutex m_mutex;
-            Cond m_cond;  // predicate: m_is_done == true
-            bool m_is_done;  // either a value or exception is set
-            ExceptionPtr m_exception_ptr;
+            mutable boost::mutex m_mutex;
+            mutable boost::condition_variable m_cond;  // predicate: m_is_done == true
+            bool m_is_done;                    // either a value or exception is set
+            boost::exception_ptr m_exception_ptr;
         };
         
         template <typename T>
         class FutureObject : public FutureObjectInterface<T>,
-                             public EnableSharedFromThis<FutureObject<T> >,
+                             public boost::enable_shared_from_this<FutureObject<T> >,
                              private FutureObjectBase {
         public:
             typedef typename FutureObjectInterface<T>::move_dest_type move_dest_type;
@@ -393,7 +373,7 @@ namespace wsd {
             {
                 wait();
 
-                WSD_ASSERT(m_value);
+                BOOST_ASSERT(m_value);
                 return *m_value;
             }
 
@@ -402,12 +382,12 @@ namespace wsd {
                 if (!isDone())
                     return false;
                 if (m_exception_ptr)
-                    m_exception_ptr->rethrow();
+                    boost::rethrow_exception(m_exception_ptr);
                 FutureTraits<T>::assign(v, m_value);
                 return true;
             }
             
-            virtual void setException(const ExceptionPtr& e)
+            virtual void setException(const boost::exception_ptr& e)
             {
                 markFinishedWithException(e);
                 doPendingCallbacks();
@@ -416,9 +396,9 @@ namespace wsd {
             virtual void setValue(rvalue_source_type t)
             {
                 {
-                    Mutex::Lock lock(m_mutex);
+                    boost::lock_guard<boost::mutex> lock(m_mutex);
                     if (m_is_done) {
-                        throwException(PromiseAlreadySatisfiedException(__FILE__, __LINE__));
+                        BOOST_THROW_EXCEPTION(PromiseAlreadySatisfiedException());
                     }
                     FutureTraits<T>::init(m_value, t);
                     markFinishedInternal();
@@ -429,15 +409,15 @@ namespace wsd {
             // pre: `callback' should not throw an exception because it may be run in
             // another thread at a later time so the exception can not be caught by the
             // caller and is meaningless. And this object must be shared by some
-            // SharedPtr<FutureObject<T> > instance.
+            // boost::shared_ptr<FutureObject<T> > instance.
             virtual void registerCallback(const CallbackType& callback)
             {
-                WSD_ASSERT(callback);
-                Mutex::Lock lock(m_mutex);
+                BOOST_ASSERT(callback);
+                boost::unique_lock<boost::mutex> lock(m_mutex);
                 if (m_is_done) {
-                    lock.release();
+                    lock.unlock();
                     try {
-                        callback(this->sharedFromThis());
+                        callback(this->shared_from_this());
                     } catch (...) {
                         // Ignore the exceptions thrown by the callback.
                     }
@@ -450,16 +430,16 @@ namespace wsd {
             {
                 wait();
 
-                WSD_ASSERT(m_value);
+                BOOST_ASSERT(m_value);
                 return m_value;
             }
 
             virtual void setValueFromStorage(const storage_type& v)
             {
                 {
-                    Mutex::Lock lock(m_mutex);
+                    boost::lock_guard<boost::mutex> lock(m_mutex);
                     if (m_is_done) {
-                        throwException(PromiseAlreadySatisfiedException(__FILE__, __LINE__));
+                        BOOST_THROW_EXCEPTION(PromiseAlreadySatisfiedException());
                     }
                     FutureTraits<T>::copy(m_value, v);
                     markFinishedInternal();
@@ -475,7 +455,7 @@ namespace wsd {
             {
                 std::list<CallbackType> callbacks;
                 {
-                    Mutex::Lock lock(m_mutex);
+                    boost::lock_guard<boost::mutex> lock(m_mutex);
                     callbacks.swap(m_pending_callbacks);
                 }
 
@@ -483,7 +463,7 @@ namespace wsd {
                                                                      end = callbacks.end();
                         it != end; ++it) {
                     try {
-                        (*it)(this->sharedFromThis());
+                        (*it)(this->shared_from_this());
                     } catch (...) {
                         // Ignore the exceptions thrown by the callback.
                     }
@@ -496,7 +476,7 @@ namespace wsd {
 
         template <>
         class FutureObject<void> : public FutureObjectInterface<void>,
-                                   public EnableSharedFromThis<FutureObject<void> >,
+                                   public boost::enable_shared_from_this<FutureObject<void> >,
                                    private FutureObjectBase {
         public:
             
@@ -529,9 +509,9 @@ namespace wsd {
             virtual void set()
             {
                 {
-                    Mutex::Lock lock(m_mutex);
+                    boost::lock_guard<boost::mutex> lock(m_mutex);
                     if (m_is_done) {
-                        throwException(PromiseAlreadySatisfiedException(__FILE__, __LINE__));
+                        BOOST_THROW_EXCEPTION(PromiseAlreadySatisfiedException());
                     }
                     markFinishedInternal();
                 }
@@ -539,7 +519,7 @@ namespace wsd {
                 doPendingCallbacks();
             }
 
-            virtual void setException(const ExceptionPtr& e)
+            virtual void setException(const boost::exception_ptr& e)
             {
                 markFinishedWithException(e);
                 doPendingCallbacks();
@@ -548,15 +528,15 @@ namespace wsd {
             // pre: `callback' should not throw an exception because it may be run in
             // another thread at a later time so the exception can not be caught by the
             // caller and is meaningless. And this object must be shared by some
-            // SharedPtr<FutureObject<void> > instance.
+            // boost::shared_ptr<FutureObject<void> > instance.
             void registerCallback(const CallbackType& callback)
             {
-                WSD_ASSERT(callback);
-                Mutex::Lock lock(m_mutex);
+                BOOST_ASSERT(callback);
+                boost::unique_lock<boost::mutex> lock(m_mutex);
                 if (m_is_done) {
-                    lock.release();
+                    lock.unlock();
                     try {
-                        callback(this->sharedFromThis());
+                        callback(this->shared_from_this());
                     } catch (...) {
                         // Ignore the exceptions thrown by the callback.
                     }
@@ -573,14 +553,14 @@ namespace wsd {
             {
                 std::list<CallbackType> callbacks;
                 {
-                    Mutex::Lock lock(m_mutex);
+                    boost::lock_guard<boost::mutex> lock(m_mutex);
                     callbacks.swap(m_pending_callbacks);
                 }
 
                 for (std::list<CallbackType>::const_iterator it = callbacks.begin(),
                                                             end = callbacks.end();
                         it != end; ++it) {
-                    (*it)(this->sharedFromThis());
+                    (*it)(this->shared_from_this());
                 }
             }
 
@@ -595,7 +575,7 @@ namespace wsd {
         class SequentialCallback {
         private:
             typedef typename detail::resolved_type<R>::type value_type;
-            typedef SharedPtr<detail::FutureObjectInterface<T> > FuturePtr;
+            typedef boost::shared_ptr<detail::FutureObjectInterface<T> > FuturePtr;
         public:
             SequentialCallback(const Callback<R(const Future<T>&)>& callback,
                                const Promise<value_type>& promise)
@@ -605,37 +585,37 @@ namespace wsd {
             
             // For callback which returns void.
             template <typename U>
-            typename enable_if<is_void<U> >::type run(const FuturePtr& future)
+            typename ::boost::enable_if<boost::is_void<U> >::type run(const FuturePtr& future)
             {
                 try {
                     m_callback(future);
                     m_promise.set();
                 } catch (...) {
-                    m_promise.setException(currentException());
+                    m_promise.setException(boost::current_exception());
                 }
             }
 
             // For callback which returns non-void non-future type
             template <typename U>
-            typename enable_if_c<!is_void<U>::value && !is_future_type<U>::value>::type
+            typename ::boost::enable_if_c<!::boost::is_void<U>::value && !is_future_type<U>::value>::type
             run(const FuturePtr& future)
             {
                 try {
                     m_promise.setValue(m_callback(future));
                 } catch (...) {
-                    m_promise.setException(currentException());
+                    m_promise.setException(boost::current_exception());
                 }
             }
 
             // For callback which returns future type.
             template <typename U>
-            typename enable_if<is_future_type<U> >::type run(const FuturePtr& future)
+            typename ::boost::enable_if<is_future_type<U> >::type run(const FuturePtr& future)
             {
                 try {
                     m_callback(future).then(bind(&ForwardValue<value_type>::template run<value_type>,
                                                  owned(new ForwardValue<value_type>(m_promise))));
                 } catch (...) {
-                    m_promise.setException(currentException());
+                    m_promise.setException(boost::current_exception());
                 }
             }
             
@@ -655,23 +635,23 @@ namespace wsd {
             {}
 
             template <typename V>
-            typename enable_if<is_void<V> >::type run(const Future<V>& future)
+            typename ::boost::enable_if<boost::is_void<V> >::type run(const Future<V>& future)
             {
                 try {
                     future.get();
                     m_promise.set();
                 } catch (...) {
-                    m_promise.setException(currentException());
+                    m_promise.setException(boost::current_exception());
                 }
             }
 
             template <typename V>
-            typename disable_if<is_void<V> >::type run(const Future<V>& future)
+            typename ::boost::disable_if<boost::is_void<V> >::type run(const Future<V>& future)
             {
                 try {
                     m_promise.m_future->setValueFromStorage(future.m_future->getStorageValue());
                 } catch (...) {
-                    m_promise.setException(currentException());
+                    m_promise.setException(boost::current_exception());
                 }
             }
 
@@ -687,8 +667,8 @@ namespace wsd {
         public:
             FutureBase() {}
 
-            FutureBase(const ExceptionPtr& e)
-                : m_future(SharedPtr<detail::PromptFutureObject<T> >(new detail::PromptFutureObject<T>(e)))
+            FutureBase(const boost::exception_ptr& e)
+                : m_future(boost::shared_ptr<detail::PromptFutureObject<T> >(new detail::PromptFutureObject<T>(e)))
             {}
         
             virtual ~FutureBase() {}
@@ -696,34 +676,34 @@ namespace wsd {
             move_dest_type get() const
             {
                 if (!m_future)
-                    throwException(FutureUninitialized(__FILE__, __LINE__));
+                    BOOST_THROW_EXCEPTION(FutureUninitialized());
                 return m_future->get();
             }
 
             bool isDone() const
             {
                 if (!m_future)
-                    throwException(FutureUninitialized(__FILE__, __LINE__));
+                    BOOST_THROW_EXCEPTION(FutureUninitialized());
                 return m_future && m_future->isDone();
             }
 
             bool hasValue() const
             {
                 if (!m_future)
-                    throwException(FutureUninitialized(__FILE__, __LINE__));
+                    BOOST_THROW_EXCEPTION(FutureUninitialized());
                 return m_future && m_future->hasValue();
             }
         
             bool hasException() const
             {
                 if (!m_future)
-                    throwException(FutureUninitialized(__FILE__, __LINE__));
+                    BOOST_THROW_EXCEPTION(FutureUninitialized());
                 return m_future && m_future->hasException();
             }
         
         protected:
 
-            typedef SharedPtr<detail::FutureObjectInterface<T> > FuturePtr;
+            typedef boost::shared_ptr<detail::FutureObjectInterface<T> > FuturePtr;
         
             FutureBase(const FuturePtr& future)
                 : m_future(future)
@@ -740,10 +720,10 @@ namespace wsd {
         Future() {}
 
         Future(typename detail::FutureTraits<T>::rvalue_source_type t)
-            : detail::FutureBase<T>(SharedPtr<detail::PromptFutureObject<T> >(new detail::PromptFutureObject<T>(t)))
+            : detail::FutureBase<T>(boost::shared_ptr<detail::PromptFutureObject<T> >(new detail::PromptFutureObject<T>(t)))
         {}
             
-        Future(const ExceptionPtr& e)
+        Future(const boost::exception_ptr& e)
             : detail::FutureBase<T>(e)
         {}
 
@@ -761,7 +741,7 @@ namespace wsd {
             typedef typename detail::resolved_type<R>::type value_type;
 
             if (!this->m_future)
-                throwException(FutureUninitialized(__FILE__, __LINE__));
+                BOOST_THROW_EXCEPTION(FutureUninitialized());
 
             Promise<value_type> promise;
             this->m_future->registerCallback(bind(&detail::SequentialCallback<R, T>::template run<R>,
@@ -785,7 +765,7 @@ namespace wsd {
     public:
         Future() {}
 
-        Future(const ExceptionPtr& e)
+        Future(const boost::exception_ptr& e)
             : detail::FutureBase<void>(e)
         {}
 
@@ -803,7 +783,7 @@ namespace wsd {
             typedef typename detail::resolved_type<R>::type value_type;
 
             if (!this->m_future)
-                throwException(FutureUninitialized(__FILE__, __LINE__));
+                BOOST_THROW_EXCEPTION(FutureUninitialized());
 
             Promise<value_type> promise;
             this->m_future->registerCallback(bind(&detail::SequentialCallback<R, void>::template run<R>,
@@ -827,7 +807,7 @@ namespace wsd {
     };
 
     template <typename T>
-    typename disable_if<is_void<T>, Future<T> >::type
+    typename ::boost::disable_if<boost::is_void<T>, Future<T> >::type
     makeFuture(typename detail::FutureTraits<T>::rvalue_source_type t)
     {
         return Future<T>(t);
@@ -835,7 +815,8 @@ namespace wsd {
 
     inline Future<void> makeFuture()
     {
-        return Future<void>(SharedPtr<detail::PromptFutureObject<void> >(new detail::PromptFutureObject<void>()));
+        return Future<void>(boost::shared_ptr<detail::PromptFutureObject<void> >(
+                                    new detail::PromptFutureObject<void>()));
     }
 
     template <typename T>
@@ -843,7 +824,7 @@ namespace wsd {
     public:
 
         Promise()
-            : m_future(SharedPtr<detail::FutureObject<T> >(new detail::FutureObject<T>()))
+            : m_future(boost::shared_ptr<detail::FutureObject<T> >(new detail::FutureObject<T>()))
         {}
         
         /**
@@ -855,7 +836,7 @@ namespace wsd {
          */
         void setValue(typename detail::FutureTraits<T>::rvalue_source_type v)
         {
-            WSD_ASSERT(m_future);
+            BOOST_ASSERT(m_future);
             m_future->setValue(v);
         }
                 
@@ -864,7 +845,7 @@ namespace wsd {
          *
          * \throws nothing
          */
-        void setException(const ExceptionPtr& e)
+        void setException(const boost::exception_ptr& e)
         {
             m_future->setException(e);
         }
@@ -880,7 +861,7 @@ namespace wsd {
     private:
         template <typename R> friend class detail::ForwardValue;
 
-        SharedPtr<detail::FutureObjectInterface<T> > m_future;
+        boost::shared_ptr<detail::FutureObjectInterface<T> > m_future;
     };
 
     template <>
@@ -891,16 +872,16 @@ namespace wsd {
          * \throws std::bad_alloc if memory is not available.
          */
         Promise()
-            : m_future(SharedPtr<detail::FutureObject<void> >(new detail::FutureObject<void>()))
+            : m_future(boost::shared_ptr<detail::FutureObject<void> >(new detail::FutureObject<void>()))
         {}
         
         void set()
         {
-            WSD_ASSERT(m_future);
+            BOOST_ASSERT(m_future);
             m_future->set();
         }
                 
-        void setException(const ExceptionPtr& e)
+        void setException(const boost::exception_ptr& e)
         {
             m_future->setException(e);
         }
@@ -910,7 +891,7 @@ namespace wsd {
             return Future<void>(m_future);
         }
     private:
-        SharedPtr<detail::FutureObjectInterface<void> > m_future;
+        boost::shared_ptr<detail::FutureObjectInterface<void> > m_future;
     };
 
 }  // namespace wsd
