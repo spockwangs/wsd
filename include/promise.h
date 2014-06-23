@@ -665,6 +665,8 @@ namespace wsd {
             typedef typename detail::FutureTraits<T>::move_dest_type move_dest_type;
             typedef typename detail::FutureTraits<T>::rvalue_source_type rvalue_source_type;
         public:
+            typedef bool (FutureBase::*unspecified_bool_type)() const;
+            
             FutureBase() {}
 
             FutureBase(const boost::exception_ptr& e)
@@ -682,27 +684,28 @@ namespace wsd {
 
             bool isDone() const
             {
-                if (!m_future)
-                    BOOST_THROW_EXCEPTION(FutureUninitialized());
                 return m_future && m_future->isDone();
             }
 
             bool hasValue() const
             {
-                if (!m_future)
-                    BOOST_THROW_EXCEPTION(FutureUninitialized());
                 return m_future && m_future->hasValue();
             }
         
             bool hasException() const
             {
-                if (!m_future)
-                    BOOST_THROW_EXCEPTION(FutureUninitialized());
                 return m_future && m_future->hasException();
             }
         
-        protected:
+            /**
+             * Returns true if this future has been initialized.
+             */
+            operator unspecified_bool_type() const
+            {
+                return m_future ? &FutureBase::isDone : NULL;
+            }
 
+        protected:
             typedef boost::shared_ptr<detail::FutureObjectInterface<T> > FuturePtr;
         
             FutureBase(const FuturePtr& future)

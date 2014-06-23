@@ -37,7 +37,7 @@ TESTS = callback_test \
 	promise_test \
 	when_all_test \
 	concurrent_map_test \
-	local_cache_test \
+	loading_cache_test \
 	singleton_test
 
 HEADER_TESTS = bind_header_test.o \
@@ -48,7 +48,7 @@ HEADER_TESTS = bind_header_test.o \
 	wsd_assert_header_test.o \
 	wsd_magic_header_test.o \
 	concurrent_map_header_test.o \
-	local_cache_header_test.o \
+	loading_cache_header_test.o \
 	singleton_header_test.o
 
 # All Google Test headers.  Usually you shouldn't change this
@@ -112,7 +112,7 @@ when_all_test : when_all_test.o gtest_main.a $(USER_DIR)/src/libwsd.a es_test.o
 concurrent_map_test : concurrent_map_test.o gtest_main.a $(USER_DIR)/src/libwsd.a es_test.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
-local_cache_test : local_cache_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
+loading_cache_test : loading_cache_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -lrt -o $@
 
 singleton_test : singleton_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
