@@ -1,7 +1,7 @@
-// Copyright (c) 2013 Tencent, Inc.
+// Copyright (c) 2013 wbb
 //     All rights reserved.
 //
-// Author: spockwang@tencent.com
+// Author: wbbtiger@gmail.com
 //
 
 #ifndef WSD_LOADING_CACHE_H
