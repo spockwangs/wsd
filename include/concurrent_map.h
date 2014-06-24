@@ -99,16 +99,17 @@ namespace wsd {
                 return;
 
             // Lock in a consistent order to avoid deadlock.
-            ConcurrentMap *lhs = NULL, *rhs = NULL;
+            ConcurrentMap *first = NULL, *second = NULL;
             if (this < &o) {
-                lhs = this;
-                rhs = &o;
+                first = this;
+                second = &o;
             } else {
-                lhs = &o;
-                rhs = this;
+                first = &o;
+                second = this;
             }
             
-            boost::lock(*lhs->m_rw_mutex, *rhs->m_rw_mutex);
+            boost::unique_lock<boost::shared_mutex> wlock1(*first->m_rw_mutex);
+            boost::unique_lock<boost::shared_mutex> wlock2(*second->m_rw_mutex);
             m_map.swap(o.m_map);
         }
         
@@ -321,7 +322,7 @@ namespace wsd {
         {
             if (!m_value)
                 return;
-            m_value->rw_mutex.unlock();
+            m_value->rw_mutex.unlock_shared();
             m_value.reset();
         }
         
@@ -347,6 +348,11 @@ namespace wsd {
     template <typename K, typename V, typename Cmp>
     class ConcurrentMap<K, V, Cmp>::Accessor : public ConcurrentMap<K, V, Cmp>::ConstAccessor {
     public:
+        virtual ~Accessor()
+        {
+            release();
+        }
+                
         value_type& operator*() const
         {
             WSD_ASSERT(this->m_value);
@@ -357,6 +363,14 @@ namespace wsd {
         {
             WSD_ASSERT(this->m_value);
             return &this->m_value->value;
+        }
+
+        void release()
+        {
+            if (!this->m_value)
+                return;
+            this->m_value->rw_mutex.unlock();
+            this->m_value.reset();
         }
 
     private:

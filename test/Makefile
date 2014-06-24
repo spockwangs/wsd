@@ -28,7 +28,7 @@ CPPFLAGS += -I$(GTEST_DIR)/include -I$(USER_DIR)/include
 CXXFLAGS += -g -W -Wall -Wextra 
 
 # Flags passed to the linker.
-LDFLAGS += -lboost_thread -lpthread
+LDFLAGS += -lboost_thread -lboost_system -lpthread
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
