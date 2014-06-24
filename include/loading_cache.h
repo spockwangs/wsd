@@ -383,7 +383,7 @@ namespace wsd {
             it->second = obj;
         } else {
             // Not found; insert it.
-            it = m_map.insert(it, make_pair(key, obj));
+            it = m_map.insert(it, std::make_pair(key, obj));
         }
         addToFront(it);
         evictEntries();
