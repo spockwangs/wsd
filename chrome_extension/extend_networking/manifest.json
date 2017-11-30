@@ -4,10 +4,8 @@
     "manifest_version": 2,
     "description": "申请临时上网",
     "browser_action": {
-        "default_icon": "logo.png"
-    },
-    "background": {
-        "scripts": [ "background.js" ]
+        "default_icon": "logo.png",
+        "default_popup": "popup.html"
     },
     "permissions": [ "http://*/", "tabs" ]
 }
