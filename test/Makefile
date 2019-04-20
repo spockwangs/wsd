@@ -22,10 +22,10 @@ GTEST_DIR = gtest
 USER_DIR = ..
 
 # Flags passed to the preprocessor.
-CPPFLAGS += -I$(GTEST_DIR)/include -I$(USER_DIR)/include
+CPPFLAGS += -I$(GTEST_DIR)/include -I$(USER_DIR)/include -DGTEST_USE_OWN_TR1_TUPLE
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -W -Wall -Wextra 
+CXXFLAGS += -g -W -Wall -Wextra -std=c++11
 
 # Flags passed to the linker.
 LDFLAGS += -lboost_thread -lboost_system -lpthread
@@ -80,11 +80,11 @@ GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
 # conservative and not optimized.  This is fine as Google Test
 # compiles fast and for ordinary users its source rarely changes.
 gtest-all.o : $(GTEST_SRCS_)
-	$(CXX) -I$(GTEST_DIR)/include -I$(GTEST_DIR) $(CXXFLAGS) -c \
+	$(CXX) -I$(GTEST_DIR)/include -I$(GTEST_DIR) $(CPPFLAGS) $(CXXFLAGS) -c \
             $(GTEST_DIR)/src/gtest-all.cc
 
 gtest_main.o : $(GTEST_SRCS_)
-	$(CXX) -I$(GTEST_DIR)/include -I$(GTEST_DIR) $(CXXFLAGS) -c \
+	$(CXX) -I$(GTEST_DIR)/include -I$(GTEST_DIR) $(CPPFLAGS) $(CXXFLAGS) -c \
             $(GTEST_DIR)/src/gtest_main.cc
 
 gtest.a : gtest-all.o
@@ -113,14 +113,14 @@ concurrent_map_test : concurrent_map_test.o gtest_main.a $(USER_DIR)/src/libwsd.
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 loading_cache_test : loading_cache_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -lrt -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 singleton_test : singleton_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 DEPENDS = $(patsubst %.cc,.%.d,$(wildcard *.cc))
 
-include $(DEPENDS)
+-include $(DEPENDS)
 
 # ---------------------------------------------------------------------------
 # Recipes
@@ -130,5 +130,4 @@ include $(DEPENDS)
 
 .%.d : %.cc
 	set -e; \
-	$(CXX) -MM $(CPPFLAGS) $< | \
-		sed -n 'H;$${g;s!.*:\(.*\)!$*.o $@: \$$(wildcard\1)!;p}' > $@
+	$(CXX) -MM $(CPPFLAGS) $< -MF $@

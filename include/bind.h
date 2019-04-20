@@ -1,10 +1,9 @@
 #ifndef __BIND_H__
 #define __BIND_H__
 
+#include <type_traits>
 #include "callback.h"
 #include "bind_detail.h"
-#include "boost/static_assert.hpp"
-#include "boost/type_traits/is_pointer.hpp"
 
 namespace wsd {
 
@@ -37,13 +36,14 @@ namespace wsd {
         // a non-const reference parameter can make for subtle bugs because the invoked
         // function will receive a reference to the stored copy of the argument and not
         // the original. 
-        BOOST_STATIC_ASSERT(
-                !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value);
+        static_assert(
+                !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value,
+                "do not bind non-const reference");
 
         // Do not allow pass raw pointers as the bound argument, because this may cause
         // memory leak. Use wsd::unretained(), wsd::owned() to specify the memory
         // ownership explicitly.
-        BOOST_STATIC_ASSERT_MSG(!::boost::is_pointer<A1>::value, "do_not_pass_raw_pointers_as_bound_argument");
+        static_assert(!std::is_pointer<A1>::value, "do_not_pass_raw_pointers_as_bound_argument");
         
         typedef detail::BindState<FunctorType, RunType,
                                   void(typename detail::CallbackParamTraits<A1>::StorageType)
@@ -68,16 +68,16 @@ namespace wsd {
         // a non-const reference parameter can make for subtle bugs because the invoked
         // function will receive a reference to the stored copy of the argument and not
         // the original. 
-        BOOST_STATIC_ASSERT_MSG(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
+        static_assert(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A2Type>::value,
-                      do_not_bind_functions_with_non_const_ref);
+                      "do_not_bind_functions_with_non_const_ref");
 
         // Do not allow pass raw pointers as the bound argument, because this may cause
         // memory leak. Use wsd::unretained(), wsd::owned() to specify the memory
         // ownership explicitly.
-        BOOST_STATIC_ASSERT_MSG(!::boost::is_pointer<A1>::value
-                      && !::boost::is_pointer<A2>::value,
-                      do_not_pass_raw_pointers_as_bound_argument);
+        static_assert(!std::is_pointer<A1>::value
+                      && !std::is_pointer<A2>::value,
+                      "do_not_pass_raw_pointers_as_bound_argument");
         
         typedef detail::BindState<FunctorType, RunType,
                                   void(typename detail::CallbackParamTraits<A1>::StorageType,
@@ -104,18 +104,18 @@ namespace wsd {
         // a non-const reference parameter can make for subtle bugs because the invoked
         // function will receive a reference to the stored copy of the argument and not
         // the original. 
-        BOOST_STATIC_ASSERT_MSG(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
+        static_assert(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A2Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A3Type>::value,
-                      do_not_bind_functions_with_non_const_ref);
+                      "do_not_bind_functions_with_non_const_ref");
 
         // Do not allow pass raw pointers as the bound argument, because this may cause
         // memory leak. Use wsd::unretained(), wsd::owned() to specify the memory
         // ownership explicitly.
-        BOOST_STATIC_ASSERT_MSG(!::boost::is_pointer<A1>::value
-                      && !::boost::is_pointer<A2>::value
-                      && !::boost::is_pointer<A3>::value,
-                      do_not_pass_raw_pointers_as_bound_argument);
+        static_assert(!std::is_pointer<A1>::value
+                      && !std::is_pointer<A2>::value
+                      && !std::is_pointer<A3>::value,
+                      "do_not_pass_raw_pointers_as_bound_argument");
         
         typedef detail::BindState<FunctorType, RunType,
                                   void(typename detail::CallbackParamTraits<A1>::StorageType,
@@ -144,20 +144,20 @@ namespace wsd {
         // a non-const reference parameter can make for subtle bugs because the invoked
         // function will receive a reference to the stored copy of the argument and not
         // the original. 
-        BOOST_STATIC_ASSERT_MSG(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
+        static_assert(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A2Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A3Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A4Type>::value,
-                      do_not_bind_functions_with_non_const_ref);
+                      "do_not_bind_functions_with_non_const_ref");
 
         // Do not allow pass raw pointers as the bound argument, because this may cause
         // memory leak. Use wsd::unretained(), wsd::owned() to specify the memory
         // ownership explicitly.
-        BOOST_STATIC_ASSERT_MSG(!::boost::is_pointer<A1>::value
-                      && !::boost::is_pointer<A2>::value
-                      && !::boost::is_pointer<A3>::value
-                      && !::boost::is_pointer<A4>::value,
-                      do_not_pass_raw_pointers_as_bound_argument);
+        static_assert(!std::is_pointer<A1>::value
+                      && !std::is_pointer<A2>::value
+                      && !std::is_pointer<A3>::value
+                      && !std::is_pointer<A4>::value,
+                      "do_not_pass_raw_pointers_as_bound_argument");
         
         typedef detail::BindState<FunctorType, RunType,
                                   void(typename detail::CallbackParamTraits<A1>::StorageType,
@@ -188,22 +188,22 @@ namespace wsd {
         // a non-const reference parameter can make for subtle bugs because the invoked
         // function will receive a reference to the stored copy of the argument and not
         // the original. 
-        BOOST_STATIC_ASSERT_MSG(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
+        static_assert(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A2Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A3Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A4Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A5Type>::value,
-                      do_not_bind_functions_with_non_const_ref);
+                      "do_not_bind_functions_with_non_const_ref");
 
         // Do not allow pass raw pointers as the bound argument, because this may cause
         // memory leak. Use wsd::unretained(), wsd::owned() to specify the memory
         // ownership explicitly.
-        BOOST_STATIC_ASSERT_MSG(!::boost::is_pointer<A1>::value
-                      && !::boost::is_pointer<A2>::value
-                      && !::boost::is_pointer<A3>::value
-                      && !::boost::is_pointer<A4>::value
-                      && !::boost::is_pointer<A5>::value,
-                      do_not_pass_raw_pointers_as_bound_argument);
+        static_assert(!std::is_pointer<A1>::value
+                      && !std::is_pointer<A2>::value
+                      && !std::is_pointer<A3>::value
+                      && !std::is_pointer<A4>::value
+                      && !std::is_pointer<A5>::value,
+                      "do_not_pass_raw_pointers_as_bound_argument");
         
         typedef detail::BindState<FunctorType, RunType,
                                   void(typename detail::CallbackParamTraits<A1>::StorageType,
@@ -238,24 +238,24 @@ namespace wsd {
         // a non-const reference parameter can make for subtle bugs because the invoked
         // function will receive a reference to the stored copy of the argument and not
         // the original. 
-        BOOST_STATIC_ASSERT_MSG(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
+        static_assert(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A2Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A3Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A4Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A5Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A6Type>::value,
-                      do_not_bind_functions_with_non_const_ref);
+                      "do_not_bind_functions_with_non_const_ref");
 
         // Do not allow pass raw pointers as the bound argument, because this may cause
         // memory leak. Use wsd::unretained(), wsd::owned() to specify the memory
         // ownership explicitly.
-        BOOST_STATIC_ASSERT_MSG(!::boost::is_pointer<A1>::value
-                      && !::boost::is_pointer<A2>::value
-                      && !::boost::is_pointer<A3>::value
-                      && !::boost::is_pointer<A4>::value
-                      && !::boost::is_pointer<A5>::value
-                      && !::boost::is_pointer<A6>::value,
-                      do_not_pass_raw_pointers_as_bound_argument);
+        static_assert(!std::is_pointer<A1>::value
+                      && !std::is_pointer<A2>::value
+                      && !std::is_pointer<A3>::value
+                      && !std::is_pointer<A4>::value
+                      && !std::is_pointer<A5>::value
+                      && !std::is_pointer<A6>::value,
+                      "do_not_pass_raw_pointers_as_bound_argument");
         
         typedef detail::BindState<FunctorType, RunType,
                                   void(typename detail::CallbackParamTraits<A1>::StorageType,
@@ -293,26 +293,26 @@ namespace wsd {
         // a non-const reference parameter can make for subtle bugs because the invoked
         // function will receive a reference to the stored copy of the argument and not
         // the original. 
-        BOOST_STATIC_ASSERT_MSG(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
+        static_assert(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A2Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A3Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A4Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A5Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A6Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A7Type>::value,
-                      do_not_bind_functions_with_non_const_ref);
+                      "do_not_bind_functions_with_non_const_ref");
 
         // Do not allow pass raw pointers as the bound argument, because this may cause
         // memory leak. Use wsd::unretained(), wsd::owned() to specify the memory
         // ownership explicitly.
-        BOOST_STATIC_ASSERT_MSG(!::boost::is_pointer<A1>::value
-                      && !::boost::is_pointer<A2>::value
-                      && !::boost::is_pointer<A3>::value
-                      && !::boost::is_pointer<A4>::value
-                      && !::boost::is_pointer<A5>::value
-                      && !::boost::is_pointer<A6>::value
-                      && !::boost::is_pointer<A7>::value,
-                      do_not_pass_raw_pointers_as_bound_argument);
+        static_assert(!std::is_pointer<A1>::value
+                      && !std::is_pointer<A2>::value
+                      && !std::is_pointer<A3>::value
+                      && !std::is_pointer<A4>::value
+                      && !std::is_pointer<A5>::value
+                      && !std::is_pointer<A6>::value
+                      && !std::is_pointer<A7>::value,
+                      "do_not_pass_raw_pointers_as_bound_argument");
         
         typedef detail::BindState<FunctorType, RunType,
                                   void(typename detail::CallbackParamTraits<A1>::StorageType,
@@ -352,7 +352,7 @@ namespace wsd {
         // a non-const reference parameter can make for subtle bugs because the invoked
         // function will receive a reference to the stored copy of the argument and not
         // the original. 
-        BOOST_STATIC_ASSERT_MSG(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
+        static_assert(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A2Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A3Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A4Type>::value
@@ -360,20 +360,20 @@ namespace wsd {
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A6Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A7Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A8Type>::value,
-                      do_not_bind_functions_with_non_const_ref);
+                      "do_not_bind_functions_with_non_const_ref");
 
         // Do not allow pass raw pointers as the bound argument, because this may cause
         // memory leak. Use wsd::unretained(), wsd::owned() to specify the memory
         // ownership explicitly.
-        BOOST_STATIC_ASSERT_MSG(!::boost::is_pointer<A1>::value
-                      && !::boost::is_pointer<A2>::value
-                      && !::boost::is_pointer<A3>::value
-                      && !::boost::is_pointer<A4>::value
-                      && !::boost::is_pointer<A5>::value
-                      && !::boost::is_pointer<A6>::value
-                      && !::boost::is_pointer<A7>::value
-                      && !::boost::is_pointer<A8>::value,
-                      do_not_pass_raw_pointers_as_bound_argument);
+        static_assert(!std::is_pointer<A1>::value
+                      && !std::is_pointer<A2>::value
+                      && !std::is_pointer<A3>::value
+                      && !std::is_pointer<A4>::value
+                      && !std::is_pointer<A5>::value
+                      && !std::is_pointer<A6>::value
+                      && !std::is_pointer<A7>::value
+                      && !std::is_pointer<A8>::value,
+                      "do_not_pass_raw_pointers_as_bound_argument");
         
         typedef detail::BindState<FunctorType, RunType,
                                   void(typename detail::CallbackParamTraits<A1>::StorageType,
@@ -414,7 +414,7 @@ namespace wsd {
         // a non-const reference parameter can make for subtle bugs because the invoked
         // function will receive a reference to the stored copy of the argument and not
         // the original. 
-        BOOST_STATIC_ASSERT_MSG(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
+        static_assert(!detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A1Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A2Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A3Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A4Type>::value
@@ -423,21 +423,21 @@ namespace wsd {
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A7Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A8Type>::value
                       && !detail::is_non_const_reference<typename detail::FunctionTraits<RunType>::A9Type>::value,
-                      do_not_bind_functions_with_non_const_ref);
+                      "do_not_bind_functions_with_non_const_ref");
 
         // Do not allow pass raw pointers as the bound argument, because this may cause
         // memory leak. Use wsd::unretained(), wsd::owned() to specify the memory
         // ownership explicitly.
-        BOOST_STATIC_ASSERT_MSG(!::boost::is_pointer<A1>::value
-                      && !::boost::is_pointer<A2>::value
-                      && !::boost::is_pointer<A3>::value
-                      && !::boost::is_pointer<A4>::value
-                      && !::boost::is_pointer<A5>::value
-                      && !::boost::is_pointer<A6>::value
-                      && !::boost::is_pointer<A7>::value
-                      && !::boost::is_pointer<A8>::value
-                      && !::boost::is_pointer<A9>::value,
-                      do_not_pass_raw_pointers_as_bound_argument);
+        static_assert(!std::is_pointer<A1>::value
+                      && !std::is_pointer<A2>::value
+                      && !std::is_pointer<A3>::value
+                      && !std::is_pointer<A4>::value
+                      && !std::is_pointer<A5>::value
+                      && !std::is_pointer<A6>::value
+                      && !std::is_pointer<A7>::value
+                      && !std::is_pointer<A8>::value
+                      && !std::is_pointer<A9>::value,
+                      "do_not_pass_raw_pointers_as_bound_argument");
         
         typedef detail::BindState<FunctorType, RunType,
                                   void(typename detail::CallbackParamTraits<A1>::StorageType,
@@ -464,7 +464,7 @@ namespace wsd {
     { return detail::OwnedWrapper<T>(p); }
 
     template <typename T>
-    detail::SharedWrapper<T> shared(const boost::shared_ptr<T>& p)
+    detail::SharedWrapper<T> shared(const std::shared_ptr<T>& p)
     { return detail::SharedWrapper<T>(p); }
 
 } // namespace wsd

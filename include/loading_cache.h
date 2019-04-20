@@ -14,6 +14,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <mutex>
 #include "promise.h"
 
 namespace wsd {
@@ -187,32 +188,32 @@ namespace wsd {
 
         void setLoader(const Loader& loader, const Reloader& reloader = Reloader())
         {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
             m_loader = loader;
             m_reloader = reloader;
         }
 
         void refreshAfter(int64_t milliseconds)
         {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
             m_refreshInterval = milliseconds;
         }
 
         void expireAfter(int64_t milliseconds)
         {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
             m_expireMilliseconds = milliseconds;
         }
 
         void setCapacity(size_t n)
         {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
             m_capacity = n;
         }
 
         size_t size() const
         {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
             return m_map.size();
         }
 
@@ -231,7 +232,7 @@ namespace wsd {
 
         CacheStats stats() const
         {
-            boost::lock_guard<boost::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
             return m_cacheStats;
         }
 
@@ -246,16 +247,12 @@ namespace wsd {
         //   invalid: oldVal and newVal are both invalid
         struct Object {
             Object()
-                : writeTime(0),
-                  prev(NULL),
-                  next(NULL)
+                : writeTime(0)
             {}
 
             Object(const V& value, int64_t writeTime)
                 : newVal(makeFuture<V>(value)),
-                  writeTime(writeTime),
-                  prev(NULL),
-                  next(NULL)
+                  writeTime(writeTime)
             {}
 
             bool isValid() const
@@ -282,7 +279,7 @@ namespace wsd {
             {
                 if (isRefreshing())
                     return oldVal;
-                BOOST_ASSERT(isValid() || isLoading());
+                assert(isValid() || isLoading());
                 if (isLoading() || newVal.hasValue())
                     return newVal;
                 return oldVal;
@@ -328,7 +325,7 @@ namespace wsd {
             return time(NULL) * 1000;
         }
 
-        mutable boost::mutex m_mutex;
+        mutable std::mutex m_mutex;
         M m_map;
         typename M::iterator m_listHead;  // Link all cache objects to a LRU list.
         int64_t m_expireMilliseconds;
@@ -344,7 +341,7 @@ namespace wsd {
     {
         int64_t now = getTick();
 
-        boost::lock_guard<boost::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> lock(m_mutex);
         typename M::iterator it = getLiveObj(key, now);
         if (it != m_map.end()) {
             scheduleRefresh(now, it);
@@ -362,7 +359,7 @@ namespace wsd {
     Future<V> LoadingCache<K, V>::getIfPresent(const K& key)
     {
         int64_t now = getTick();
-        boost::lock_guard<boost::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> lock(m_mutex);
         typename M::iterator it = getLiveObj(key, now);
         if (it != m_map.end()) {
             scheduleRefresh(now, it);
@@ -376,7 +373,7 @@ namespace wsd {
     void LoadingCache<K, V>::put(const K& key, const V& value)
     {
         Object obj(value, getTick());
-        boost::lock_guard<boost::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> lock(m_mutex);
         typename M::iterator it = m_map.lower_bound(key);
         if (it != m_map.end() && !m_map.key_comp()(key, it->first)) {
             // Found; replace it.
@@ -392,7 +389,7 @@ namespace wsd {
     template <typename K, typename V>
     void LoadingCache<K, V>::invalidate(const K& key)
     {
-        boost::lock_guard<boost::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> lock(m_mutex);
         typename M::iterator it = m_map.find(key);
         if (it != m_map.end())
             remove(it);
@@ -401,7 +398,7 @@ namespace wsd {
     template <typename K, typename V>
     void LoadingCache<K, V>::invalidateAll()
     {
-        boost::lock_guard<boost::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> lock(m_mutex);
         m_map.clear();
         m_listHead = m_map.end();
     }
@@ -433,7 +430,7 @@ namespace wsd {
     template <typename K, typename V>
     void LoadingCache<K, V>::scheduleRefresh(int64_t now, typename M::iterator it)
     {
-        BOOST_ASSERT(it != m_map.end());
+        assert(it != m_map.end());
         Object& obj = it->second;
         if (!obj.isValid() || m_refreshInterval <= 0)
             return;
@@ -459,7 +456,7 @@ namespace wsd {
         obj.newVal = m_loader(key);
         obj.writeTime = now;
         std::pair<typename M::iterator, bool> pair = m_map.insert(std::make_pair(key, obj));
-        BOOST_ASSERT(pair.second);
+        assert(pair.second);
         addToFront(pair.first);
         evictEntries();
         return obj.newVal;
