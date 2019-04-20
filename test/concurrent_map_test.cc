@@ -183,7 +183,7 @@ TEST(concurrent_map, iteartor)
     
     wsd::ConcurrentMap<int, int> m2(v.begin(), v.end());
     for (wsd::ConcurrentMap<int, int>::const_iterator it = m2.begin(); it != m2.end(); ++it)
-        EXPECT_TRUE(std::find(v.begin(), v.end(), std::make_pair<int, int>(it->first, it->second)) != v.end());
+        EXPECT_TRUE(std::find(v.begin(), v.end(), std::make_pair(it->first, it->second)) != v.end());
     EXPECT_EQ(v.size(), (size_t) std::distance(m2.begin(), m2.end()));
 
     const wsd::ConcurrentMap<int, int> m3;
@@ -191,7 +191,7 @@ TEST(concurrent_map, iteartor)
 
     wsd::ConcurrentMap<int, int> m4(v.begin(), v.end());
     for (wsd::ConcurrentMap<int, int>::const_iterator it = m4.begin(); it != m4.end(); ++it)
-        EXPECT_TRUE(std::find(v.begin(), v.end(), std::make_pair<int, int>(it->first, it->second)) != v.end());
+        EXPECT_TRUE(std::find(v.begin(), v.end(), std::make_pair(it->first, it->second)) != v.end());
     EXPECT_EQ(v.size(), (size_t) std::distance(m4.begin(), m4.end()));
 
 }
