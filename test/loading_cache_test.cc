@@ -59,7 +59,7 @@ TEST(LoadingCache, refresh)
 Future<int> regetIntException(const int&, const int&)
 {
     Promise<int> p;
-    p.setException(boost::copy_exception(runtime_error("error")));
+    p.setException(std::make_exception_ptr(runtime_error("error")));
     return p.getFuture();
 }
 

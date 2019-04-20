@@ -10,6 +10,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <tuple>
 
 using namespace std;
 
@@ -17,15 +18,15 @@ bool g_has_run = false;
 bool g_has_exception = false;
 
 void run_or_not_run(
-        const wsd::Future<boost::tuple<wsd::Future<TestClass>, wsd::Future<TestClass>, wsd::Future<TestClass> > >& future)
+        const wsd::Future<std::tuple<wsd::Future<TestClass>, wsd::Future<TestClass>, wsd::Future<TestClass> > >& future)
 {
     g_has_run = true;
     g_has_exception = false;
     try {
         EXPECT_TRUE(future.isDone());
-        EXPECT_EQ(0xAA, *future.get().get<0>().get().p);
-        EXPECT_EQ(0xBB, *future.get().get<1>().get().p);
-        EXPECT_EQ(0xCC, *future.get().get<2>().get().p);
+        EXPECT_EQ(0xAA, *std::get<0>(future.get()).get().p);
+        EXPECT_EQ(0xBB, *std::get<1>(future.get()).get().p);
+        EXPECT_EQ(0xCC, *std::get<2>(future.get()).get().p);
     } catch (...) {
         g_has_exception = true;
     }

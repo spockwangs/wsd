@@ -21,7 +21,7 @@ TEST(Singleton, constructor)
 {
     // Test that a instance is created.
     boost::shared_ptr<TestClass> p1 = wsd::Singleton<TestClass>::getInstance();
-    EXPECT_TRUE(p1);
+    EXPECT_TRUE(p1 != nullptr);
     
     // Test that 2 instances are the same.
     boost::shared_ptr<TestClass> p2 = wsd::Singleton<TestClass>::getInstance();
