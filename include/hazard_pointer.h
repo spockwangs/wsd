@@ -10,6 +10,7 @@
 #include <functional>
 #include <vector>
 #include <atomic>
+#include <memory>
 #include <boost/thread/tss.hpp>
 #include <boost/checked_delete.hpp>
 
@@ -43,7 +44,7 @@ private:
     };
 
 public:
-    HazardManager();
+    HazardManager(int max_hp);
 
     template <typename T>
     void RetireNode(T* node)
@@ -59,9 +60,18 @@ public:
 private:
     struct HPRecType {
         std::atomic_flag active = ATOMIC_FLAG_INIT;
-        std::vector<void*> nodes;
+        std::unique_ptr<void*[]> nodes;
+        size_t node_count = 0;
         HPRecType* next = nullptr;
         std::list<NodeToRetire*> retire_list;
+
+        HPRecType(int max_hp)
+            : nodes(new void*[max_hp])
+        {
+            for (int i = 0; i < max_hp; ++i) {
+                nodes[i] = nullptr;
+            }
+        }
     };
 
     HPRecType* AllocateHpRec();
@@ -74,6 +84,7 @@ private:
 
     void HelpScan();
     
+    const int m_max_hp;
     std::atomic<HPRecType*> m_head{nullptr};
     std::atomic<int> m_len{0};
     boost::thread_specific_ptr<HPRecType> m_my_hp_rec{&HazardManager::RetireHpRec};
