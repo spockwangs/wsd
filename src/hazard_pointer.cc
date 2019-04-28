@@ -6,6 +6,7 @@
 
 #include "hazard_pointer.h"
 #include <unordered_set>
+#include <exception>
 
 using namespace std;
 
@@ -14,6 +15,33 @@ namespace wsd {
 HazardManager::HazardManager(int max_hp)
     : m_max_hp(max_hp)
 {
+}
+
+HazardManager::~HazardManager()
+{
+    // Reset before destructing because it depends on this object.
+    m_my_hp_rec.reset();
+
+    // We should deallocate all nodes in the retire list of all threads, then the hazard pointer
+    // list. The hazard pointer list should contain no hazard pointers now.
+    for (auto* p = m_head.load(std::memory_order_relaxed); p;) {
+        auto* q = p;
+        p = p->next;
+        delete q;
+    }
+}
+
+int HazardManager::TEST_GetNumberOfHp() const
+{
+    int hp_count = 0;
+    for (auto* p = m_head.load(std::memory_order_relaxed); p; p = p->next) {
+        for (int i = 0; i < m_max_hp; ++i) {
+            if (p->nodes[i]) {
+                ++hp_count;
+            }
+        }
+    }
+    return hp_count;
 }
 
 HazardManager::HPRecType* HazardManager::AllocateHpRec()
@@ -47,7 +75,7 @@ HazardManager::HPRecType* HazardManager::GetHpRecForCurrentThread()
 // static
 void HazardManager::RetireHpRec(HazardManager::HPRecType* p)
 {
-    for (int i = 0; i < p->node_count; ++i) {
+    for (int i = 0; i < p->num_of_nodes; ++i) {
         p->nodes[i] = nullptr;
     }
     p->active.clear();
@@ -68,13 +96,11 @@ void HazardManager::Scan()
     }
 
     HPRecType* hp_rec = GetHpRecForCurrentThread();
-    std::list<NodeToRetire*> tmp_list;
+    std::list<NodeToRetire> tmp_list;
     tmp_list.swap(hp_rec->retire_list);
-    for (auto* p : tmp_list) {
-        if (plist.count(p->node) > 0) {
-            hp_rec->retire_list.push_back(p);
-        } else {
-            delete p;
+    for (auto& n : tmp_list) {
+        if (plist.count(n.node) > 0) {
+            hp_rec->retire_list.push_back(std::move(n));
         }
     }
 }
@@ -94,9 +120,13 @@ void HazardManager::HelpScan()
     }
 }
 
-HazardPointer::HazardPointer(HazardManager& mgr)
-    : m_mgr(mgr)
+HazardPointer::HazardPointer(HazardManager& mgr, int i)
 {
+    HazardManager::HPRecType* hp_rec = mgr.GetHpRecForCurrentThread();
+    if (i >= mgr.m_max_hp) {
+        throw std::invalid_argument("input number bigger than number of hazard pointers");
+    }
+    m_hp = &hp_rec->nodes[i];
 }
 
 HazardPointer::~HazardPointer()
@@ -106,19 +136,14 @@ HazardPointer::~HazardPointer()
 
 void HazardPointer::Acquire(void* p)
 {
-    HazardManager::HPRecType* hp_rec = m_mgr.GetHpRecForCurrentThread();
-    hp_rec->nodes[hp_rec->node_count++] = p;
+    *m_hp = p;
     // Make the validation happens after this.
     std::atomic_thread_fence(std::memory_order_seq_cst);
 }
 
 void HazardPointer::Release()
 {
-    HazardManager::HPRecType* hp_rec = m_mgr.GetHpRecForCurrentThread();
-    for (int i = 0; i < hp_rec->node_count; ++i) {
-        hp_rec->nodes[i] = nullptr;
-    }
-    hp_rec->node_count = 0;
+    *m_hp = nullptr;
 }
 
 }  // namespace wsd

@@ -63,8 +63,8 @@ void FifoQueue<T>::Enqueue(T&& data)
 template <typename T>
 bool FifoQueue<T>::Dequeue(T* p)
 {
-    wsd::HazardPointer hp(m_hazard_manager);
-    wsd::HazardPointer hp1(m_hazard_manager);
+    wsd::HazardPointer hp(m_hazard_manager, 0);
+    wsd::HazardPointer hp1(m_hazard_manager, 1);
     NodeType* h = nullptr;
     while (true) {
         h = m_head.load();
@@ -97,4 +97,46 @@ TEST(HazardPointer, fifo_queue)
     int a;
     EXPECT_TRUE(queue.Dequeue(&a));
     EXPECT_EQ(1, a);
+}
+
+TEST(HazardPointer, SequentialExecution)
+{
+    wsd::HazardManager hp_mgr(1);
+    wsd::HazardPointer hp(hp_mgr, 0);
+    int a;
+    hp.Acquire(&a);
+    EXPECT_EQ(1, hp_mgr.TEST_GetNumberOfHp());
+    hp.Release();
+    EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());
+
+    EXPECT_THROW(wsd::HazardPointer(hp_mgr, 1), std::invalid_argument);
+}
+
+TEST(HazardPointer, SequentialExecution2)
+{
+    wsd::HazardManager hp_mgr(2);
+    {
+        wsd::HazardPointer hp1(hp_mgr, 0);
+        wsd::HazardPointer hp2(hp_mgr, 1);
+        EXPECT_THROW(wsd::HazardPointer(hp_mgr, 2), std::invalid_argument);
+
+        int a, b;
+        hp1.Acquire(&a);
+        EXPECT_EQ(1, hp_mgr.TEST_GetNumberOfHp());
+        hp1.Release();
+        EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());
+        hp1.Acquire(&a);
+        EXPECT_EQ(1, hp_mgr.TEST_GetNumberOfHp());
+        hp2.Acquire(&b);
+        EXPECT_EQ(2, hp_mgr.TEST_GetNumberOfHp());
+        hp2.Release();
+        EXPECT_EQ(1, hp_mgr.TEST_GetNumberOfHp());
+        hp1.Release();
+        EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());
+
+        hp2.Acquire(&a);
+        hp1.Acquire(&b);
+        EXPECT_EQ(2, hp_mgr.TEST_GetNumberOfHp());        
+    }
+    EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());            
 }
