@@ -16,8 +16,6 @@
 
 namespace wsd {
 
-const int K = 2;
-
 class HazardManager final {
 private:
     template <typename T>
@@ -41,32 +39,58 @@ private:
         {
             deleter(node);
         }
+
+        NodeToRetire(const NodeToRetire&) = delete;
+
+        NodeToRetire(NodeToRetire&& other)
+            : node(other.node),
+              deleter(std::move(other.deleter))
+        {
+            other.node = nullptr;
+        }
+
+        void operator=(const NodeToRetire&) = delete;
+
+        NodeToRetire& operator=(NodeToRetire&& other)
+        {
+            if (this != &other) {
+                node = other.node;
+                other.node = nullptr;
+                deleter = std::move(other.deleter);
+            }
+            return *this;
+        }
     };
 
 public:
     HazardManager(int max_hp);
 
+    ~HazardManager();
+    
     template <typename T>
     void RetireNode(T* node)
     {
         HPRecType* hp_rec = GetHpRecForCurrentThread();
-        hp_rec->retire_list.push_back(new NodeToRetire(node));
+        hp_rec->retire_list.emplace_back(node);
         if (hp_rec->retire_list.size() >= 2*m_len.load()) {
             Scan();
             HelpScan();
         }
     }
 
+    int TEST_GetNumberOfHp() const;
+    
 private:
     struct HPRecType {
         std::atomic_flag active = ATOMIC_FLAG_INIT;
         std::unique_ptr<void*[]> nodes;
-        size_t node_count = 0;
+        const int num_of_nodes = 0;
         HPRecType* next = nullptr;
-        std::list<NodeToRetire*> retire_list;
+        std::list<NodeToRetire> retire_list;
 
         HPRecType(int max_hp)
-            : nodes(new void*[max_hp])
+            : nodes(new void*[max_hp]),
+              num_of_nodes(max_hp)
         {
             for (int i = 0; i < max_hp; ++i) {
                 nodes[i] = nullptr;
@@ -94,7 +118,7 @@ private:
 
 class HazardPointer final {
 public:
-    HazardPointer(HazardManager& mgr);
+    HazardPointer(HazardManager& mgr, int i = 0);
 
     ~HazardPointer();
 
@@ -103,7 +127,7 @@ public:
     void Release();
 
 private:
-    HazardManager& m_mgr;
+    void** m_hp = nullptr;
 };
     
 
