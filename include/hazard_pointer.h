@@ -80,6 +80,12 @@ public:
 
     int TEST_GetNumberOfHp() const;
     
+    bool TEST_HpListContains(void* p) const;
+
+    bool TEST_RetireListContains(void* p) const;
+
+    int TEST_GetRetireListLenOfCurrentThread() const;
+    
 private:
     struct HPRecType {
         std::atomic_flag active = ATOMIC_FLAG_INIT;
