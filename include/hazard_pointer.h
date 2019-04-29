@@ -83,17 +83,33 @@ public:
 private:
     struct HPRecType {
         std::atomic_flag active = ATOMIC_FLAG_INIT;
+        std::atomic<int> ref_count{0};
         std::unique_ptr<void*[]> nodes;
         const int num_of_nodes = 0;
         HPRecType* next = nullptr;
         std::list<NodeToRetire> retire_list;
 
         HPRecType(int max_hp)
-            : nodes(new void*[max_hp]),
+            : ref_count(1),
+              nodes(new void*[max_hp]),
               num_of_nodes(max_hp)
         {
             for (int i = 0; i < max_hp; ++i) {
                 nodes[i] = nullptr;
+            }
+        }
+
+        void IncRef()
+        {
+            ++ref_count;
+        }
+
+        void DecRef()
+        {
+            --ref_count;
+            assert(ref_count >= 0);
+            if (ref_count <= 0) {
+                delete this;
             }
         }
     };

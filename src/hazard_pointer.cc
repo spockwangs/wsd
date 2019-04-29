@@ -19,15 +19,12 @@ HazardManager::HazardManager(int max_hp)
 
 HazardManager::~HazardManager()
 {
-    // Reset before destructing because it depends on this object.
-    m_my_hp_rec.reset();
-
-    // We should deallocate all nodes in the retire list of all threads, then the hazard pointer
-    // list. The hazard pointer list should contain no hazard pointers now.
+    // The hazard pointer list should contain no hazard pointers now. Decrement references to all
+    // hazard pointers.
     for (auto* p = m_head.load(std::memory_order_relaxed); p;) {
         auto* q = p;
         p = p->next;
-        delete q;
+        q->DecRef();
     }
 }
 
@@ -56,6 +53,7 @@ HazardManager::HPRecType* HazardManager::AllocateHpRec()
 
     std::unique_ptr<HPRecType> new_hp(new HPRecType(m_max_hp));
     new_hp->active.test_and_set();
+    new_hp->IncRef();
     HPRecType* old_head = nullptr;
     do {
         old_head = m_head.load();
@@ -79,6 +77,7 @@ void HazardManager::RetireHpRec(HazardManager::HPRecType* p)
         p->nodes[i] = nullptr;
     }
     p->active.clear();
+    p->DecRef();
 }
 
 void HazardManager::Scan()
