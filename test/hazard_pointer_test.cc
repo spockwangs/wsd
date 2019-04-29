@@ -17,6 +17,15 @@ public:
     {
     }
 
+    ~FifoQueue()
+    {
+        for (auto* p = m_head.load(); p;) {
+            auto* q = p;
+            p = p->next;
+            delete q;
+        }
+    }
+    
     void Enqueue(T&& t);
 
     bool Dequeue(T* p);
@@ -215,5 +224,5 @@ TEST(HazardPointer, ConcurrentExecution)
     done2.wait();
     EXPECT_FALSE(hp_mgr.TEST_HpListContains(p));    
     EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());
-    delete p;
+    // delete p;
 }
