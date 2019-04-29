@@ -41,6 +41,39 @@ int HazardManager::TEST_GetNumberOfHp() const
     return hp_count;
 }
 
+bool HazardManager::TEST_HpListContains(void* p) const
+{
+    for (auto* q = m_head.load(); q; q = q->next) {
+        for (int i = 0; i < q->num_of_nodes; ++i) {
+            if (q->nodes[i] == p) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool HazardManager::TEST_RetireListContains(void* p) const
+{
+    for (auto* q = m_head.load(); q; q = q->next) {
+        for (const auto& node : q->retire_list) {
+            if (node.node == p) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int HazardManager::TEST_GetRetireListLenOfCurrentThread() const
+{
+    auto* hp_rec = m_my_hp_rec.get();
+    if (hp_rec) {
+        return hp_rec->retire_list.size();
+    }
+    return 0;
+}
+
 HazardManager::HPRecType* HazardManager::AllocateHpRec()
 {
     for (auto* p = m_head.load(); p; p = p->next) {
@@ -59,6 +92,7 @@ HazardManager::HPRecType* HazardManager::AllocateHpRec()
         old_head = m_head.load();
         new_hp->next = old_head;
     } while (!m_head.compare_exchange_weak(old_head, new_hp.get()));
+    m_len += m_max_hp;
     return new_hp.release();
 }
 
