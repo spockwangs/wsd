@@ -41,9 +41,9 @@ private:
     {
         int idx = 0;
         while (true) {
-            idx = m_read_idx.load();
-            m_data[idx].reader_cnt.fetch_add(1);
-            if (idx == m_read_idx.load())
+            idx = m_read_idx.load(std::memory_order_relaxed);
+            m_data[idx].reader_cnt.fetch_add(1, std::memory_order_relaxed);
+            if (idx == m_read_idx.load(std::memory_order_acquire))
                 break;
             ReleaseReading(idx);
         }
@@ -52,13 +52,13 @@ private:
         
     static void ReleaseReading(RefCountedData* p)
     {
-        p->reader_cnt.fetch_sub(1);
+        p->reader_cnt.fetch_sub(1, std::memory_order_release);
     }
 
     RefCountedData* TryAcquireForWriting()
     {
-        int idx = 1 - m_read_idx.load();
-        if (m_data[idx].reader_cnt.load() == 0) {
+        int idx = 1 - m_read_idx.load(std::memory_order_relaxed);
+        if (m_data[idx].reader_cnt.load(std::memory_order_acquire) == 0) {
             return m_data[idx];
         }
         // Some thread is reading; wait a moment.
@@ -67,8 +67,8 @@ private:
 
     void ReleaseWriting()
     {
-        int idx = 1 - m_read_idx.load();
-        m_read_idx.store(idx);
+        int idx = 1 - m_read_idx.load(std::memory_order_relaxed);
+        m_read_idx.store(idx, std::memory_order_release);
     }
     
     std::atomic<int> m_read_idx{0};
