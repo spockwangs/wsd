@@ -21,7 +21,7 @@ HazardManager::~HazardManager()
 {
     // The hazard pointer list should contain no hazard pointers now. Decrement references to all
     // hazard pointers.
-    for (auto* p = m_head.load(std::memory_order_relaxed); p;) {
+    for (auto* p = m_head.load(std::memory_order_acquire); p;) {
         auto* q = p;
         p = p->next;
         q->DecRef();
@@ -31,7 +31,7 @@ HazardManager::~HazardManager()
 int HazardManager::TEST_GetNumberOfHp() const
 {
     int hp_count = 0;
-    for (auto* p = m_head.load(std::memory_order_relaxed); p; p = p->next) {
+    for (auto* p = m_head.load(std::memory_order_acquire); p; p = p->next) {
         for (int i = 0; i < m_max_hp; ++i) {
             if (p->nodes[i]) {
                 ++hp_count;
@@ -43,7 +43,7 @@ int HazardManager::TEST_GetNumberOfHp() const
 
 bool HazardManager::TEST_HpListContains(void* p) const
 {
-    for (auto* q = m_head.load(); q; q = q->next) {
+    for (auto* q = m_head.load(std::memory_order_acquire); q; q = q->next) {
         for (int i = 0; i < q->num_of_nodes; ++i) {
             if (q->nodes[i] == p) {
                 return true;
@@ -55,7 +55,7 @@ bool HazardManager::TEST_HpListContains(void* p) const
 
 bool HazardManager::TEST_RetireListContains(void* p) const
 {
-    for (auto* q = m_head.load(); q; q = q->next) {
+    for (auto* q = m_head.load(std::memory_order_acquire); q; q = q->next) {
         for (const auto& node : q->retire_list) {
             if (node.node == p) {
                 return true;
@@ -76,8 +76,8 @@ int HazardManager::TEST_GetRetireListLenOfCurrentThread() const
 
 HazardManager::HPRecType* HazardManager::AllocateHpRec()
 {
-    for (auto* p = m_head.load(); p; p = p->next) {
-        if (p->active.test_and_set()) {
+    for (auto* p = m_head.load(std::memory_order_acquire); p; p = p->next) {
+        if (p->active.test_and_set(std::memory_order_acquire)) {
             continue;
         }
         // locked.
@@ -85,14 +85,16 @@ HazardManager::HPRecType* HazardManager::AllocateHpRec()
     }
 
     std::unique_ptr<HPRecType> new_hp(new HPRecType(m_max_hp));
-    new_hp->active.test_and_set();
+    new_hp->active.test_and_set(std::memory_order_relaxed);
     new_hp->IncRef();
     HPRecType* old_head = nullptr;
     do {
-        old_head = m_head.load();
+        old_head = m_head.load(std::memory_order_relaxed);
         new_hp->next = old_head;
-    } while (!m_head.compare_exchange_weak(old_head, new_hp.get()));
-    m_len += m_max_hp;
+    } while (!m_head.compare_exchange_weak(old_head, new_hp.get(),
+                                           std::memory_order_release,
+                                           std::memory_order_relaxed));
+    m_len.fetch_add(m_max_hp, std::memory_order_relaxed);
     return new_hp.release();
 }
 
@@ -110,14 +112,14 @@ void HazardManager::RetireHpRec(HazardManager::HPRecType* p)
     for (int i = 0; i < p->num_of_nodes; ++i) {
         p->nodes[i] = nullptr;
     }
-    p->active.clear();
+    p->active.clear(std::memory_order_release);
     p->DecRef();
 }
 
 void HazardManager::Scan()
 {
     std::unordered_set<void*> plist;
-    auto* hp = m_head.load();
+    auto* hp = m_head.load(std::memory_order_acquire);
     while (hp != nullptr) {
         for (int i = 0; i < m_max_hp; ++i) {
             auto* p = hp->nodes[i];
@@ -141,15 +143,15 @@ void HazardManager::Scan()
 void HazardManager::HelpScan()
 {
     HPRecType* hp_rec = GetHpRecForCurrentThread();
-    for (auto* p = m_head.load(); p; p = p->next) {
-        if (p->active.test_and_set()) {
+    for (auto* p = m_head.load(std::memory_order_acquire); p; p = p->next) {
+        if (p->active.test_and_set(std::memory_order_acquire)) {
             continue;
         }
         hp_rec->retire_list.splice(hp_rec->retire_list.end(), p->retire_list);
-        if (hp_rec->retire_list.size() >= 2*m_len.load()) {
+        if (hp_rec->retire_list.size() >= 2*m_len.load(std::memory_order_relaxed)) {
             Scan();
         }
-        p->active.clear();
+        p->active.clear(std::memory_order_release);
     }
 }
 
