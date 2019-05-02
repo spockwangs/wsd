@@ -108,14 +108,14 @@ private:
 
         void IncRef()
         {
-            ++ref_count;
+            ref_count.fetch_add(1, std::memory_order_relaxed);
         }
 
         void DecRef()
         {
-            --ref_count;
-            assert(ref_count >= 0);
-            if (ref_count <= 0) {
+            int old = ref_count.fetch_sub(1, std::memory_order_relaxed);
+            assert(old >= 1);
+            if (old <= 1) {
                 delete this;
             }
         }
