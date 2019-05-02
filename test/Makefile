@@ -135,4 +135,4 @@ DEPENDS = $(patsubst %.cc,.%.d,$(wildcard *.cc))
 
 .%.d : %.cc
 	set -e; \
-	$(CXX) -MM $(CPPFLAGS) $< -MF $@
+	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) $< -MF $@
