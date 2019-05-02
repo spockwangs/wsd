@@ -7,10 +7,12 @@
 #ifndef __PROMISE_H__
 #define __PROMISE_H__
 
+#include <cassert>
 #include <exception>
 #include <list>
 #include <type_traits>
 #include <mutex>
+#include <condition_variable>
 #include "callback.h"
 #include "bind.h"
 #include "wsd_magic.h"

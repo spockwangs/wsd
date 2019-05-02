@@ -224,5 +224,57 @@ TEST(HazardPointer, ConcurrentExecution)
     done2.wait();
     EXPECT_FALSE(hp_mgr.TEST_HpListContains(p));    
     EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());
-    // delete p;
+    delete p;
+}
+
+TEST(HazardPointer, ConcurrentExecution2)
+{
+    wsd::HazardManager hp_mgr(1);
+    int *p = new int;
+
+    std::promise<void> go;
+    std::shared_future<void> ready(go.get_future());
+    std::promise<void> thread1_ready, thread1_ready2;
+    std::promise<void> thread2_ready, thread2_ready2;
+    std::promise<void> go2;
+    std::shared_future<void> ready2(go2.get_future());
+
+    std::future<void> done1 = std::async(std::launch::async,
+                                         [&, ready, p, ready2] () {
+                                             wsd::HazardPointer hp(hp_mgr, 0);
+                                             thread1_ready.set_value();
+                                             ready.wait();
+                                             hp.Acquire(p);
+
+                                             thread1_ready2.set_value();
+                                             ready2.wait();
+                                         });
+    std::future<void> done2 = std::async(std::launch::async,
+                                         [&, ready, p, ready2] ()
+                                         {
+                                             wsd::HazardPointer hp(hp_mgr, 0);
+                                             thread2_ready.set_value();
+                                             ready.wait();
+                                             hp.Acquire(p);
+                                             hp.Release();
+                                             
+                                             thread2_ready2.set_value();
+                                             ready2.wait();
+                                             hp_mgr.RetireNode(p);
+                                         });
+
+    thread1_ready.get_future().wait();
+    thread2_ready.get_future().wait();
+    go.set_value();
+
+    thread1_ready2.get_future().wait();
+    thread2_ready2.get_future().wait();
+    EXPECT_TRUE(hp_mgr.TEST_HpListContains(p));
+    EXPECT_EQ(1, hp_mgr.TEST_GetNumberOfHp());
+
+    go2.set_value();
+    done1.wait();
+    done2.wait();
+    EXPECT_FALSE(hp_mgr.TEST_HpListContains(p));    
+    EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());
 }
