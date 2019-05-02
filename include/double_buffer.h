@@ -88,7 +88,7 @@ public:
     
     ~DoubleBufferReader()
     {
-        return DoubleBuffer<T>::Release(m_data);
+        DoubleBuffer<T>::Release(m_data);
     }
         
     const T& Get() const

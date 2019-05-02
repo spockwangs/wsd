@@ -4,7 +4,7 @@ TOP_DIR = ".."
 
 CXX = g++
 CPPFLAGS += -I$(TOP_DIR)/include
-CXXFLAGS += -g -Wall -Wextra -W -std=c++11 -pedantic
+CXXFLAGS += -g -Wall -Wextra -W -std=c++11
 LDFLAGS += -lpthread
 OBJS = $(patsubst %.cc,%.o,$(wildcard *.cc))
 
@@ -27,4 +27,4 @@ include $(DEPENDS)
 
 .%.d : %.cc
 	set -e; \
-	$(CXX) -MM $(CPPFLAGS) $< -MF $@
+	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) $< -MF $@

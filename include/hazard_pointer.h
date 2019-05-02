@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <list>
 #include <functional>
 #include <vector>
