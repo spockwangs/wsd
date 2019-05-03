@@ -51,7 +51,9 @@ HEADER_TESTS = bind_header_test.o \
 	concurrent_map_header_test.o \
 	loading_cache_header_test.o \
 	singleton_header_test.o \
-	double_buffer_header_test.o
+	double_buffer_header_test.o \
+	hazard_pointer_header_test.o \
+	ebr_header_test.o
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
