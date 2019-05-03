@@ -153,5 +153,4 @@ private:
     void** m_hp = nullptr;
 };
     
-
 }  // namespace wsd
