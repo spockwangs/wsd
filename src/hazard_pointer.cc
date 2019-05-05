@@ -87,13 +87,10 @@ HazardManager::HPRecType* HazardManager::AllocateHpRec()
     std::unique_ptr<HPRecType> new_hp(new HPRecType(m_max_hp));
     new_hp->active.test_and_set(std::memory_order_relaxed);
     new_hp->IncRef();
-    HPRecType* old_head = nullptr;
-    do {
-        old_head = m_head.load(std::memory_order_relaxed);
-        new_hp->next = old_head;
-    } while (!m_head.compare_exchange_weak(old_head, new_hp.get(),
-                                           std::memory_order_release,
-                                           std::memory_order_relaxed));
+    new_hp->next = m_head.load(std::memory_order_relaxed);
+    while (!m_head.compare_exchange_weak(new_hp->next, new_hp.get(),
+            std::memory_order_release,
+            std::memory_order_relaxed));
     m_len.fetch_add(m_max_hp, std::memory_order_relaxed);
     return new_hp.release();
 }

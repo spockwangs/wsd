@@ -14,15 +14,15 @@
 
 namespace wsd {
 
-class Ebr final {
+class EbrManager final {
 public:
-    Ebr();
+    EbrManager();
 
     // Disallow copy and assignment.
-    Ebr(const Ebr&) = delete;
-    void operator=(const Ebr&) = delete;
+    EbrManager(const EbrManager&) = delete;
+    void operator=(const EbrManager&) = delete;
     
-    ~Ebr();
+    ~EbrManager();
     
     void EnterCriticalRegion();
 
@@ -33,11 +33,10 @@ public:
     {
         EbrRecord* p = GetEbrRecForCurrentThread();
         std::unique_ptr<NodeToRetire> node_to_retire(new NodeToRetire(node));
-        NodeToRetire* head = nullptr;
-        do {
-            head = m_retire_list[p->epoch].load();
-            node_to_retire->next = head;
-        } while (m_retire_list[p->epoch].compare_exchange_weak(head, node_to_retire.get()));
+        node_to_retire->next = m_retire_list[p->epoch].load(std::memory_order_relaxed);
+        while (!m_retire_list[p->epoch].compare_exchange_weak(
+                        node_to_retire->next, node_to_retire.get(),
+                        std::memory_order_release, std::memory_order_relaxed));
         node_to_retire.release();
         Scan();
     }
@@ -132,7 +131,27 @@ private:
     std::atomic<EbrRecord*> m_head{nullptr};
     std::atomic<int> m_global_epoch{0};
     std::atomic<NodeToRetire*> m_retire_list[3]{{nullptr}};
-    boost::thread_specific_ptr<EbrRecord> m_my_ebr_rec{&Ebr::RetireEbrRecord};
+    boost::thread_specific_ptr<EbrRecord> m_my_ebr_rec{&EbrManager::RetireEbrRecord};
+};
+
+class EbrGuard final {
+public:
+    EbrGuard(EbrManager& ebr)
+        : m_ebr(ebr)
+    {
+        m_ebr.EnterCriticalRegion();
+    }
+
+    EbrGuard(const EbrGuard&) = delete;
+    void operator=(const EbrGuard&) = delete;
+    
+    ~EbrGuard()
+    {
+        m_ebr.ExitCriticalRegion();
+    }
+
+private:
+    EbrManager& m_ebr;
 };
 
 }  // namespace wsd

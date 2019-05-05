@@ -8,13 +8,13 @@
 
 namespace wsd {
 
-Ebr::Ebr()
+EbrManager::EbrManager()
 {
 }
 
-Ebr::~Ebr()
+EbrManager::~EbrManager()
 {
-    for (auto* p = m_head.load(); p;) {
+    for (auto* p = m_head.load(std::memory_order_relaxed); p;) {
         auto* q = p;
         p = p->next;
         q->DecRef();
@@ -24,20 +24,20 @@ Ebr::~Ebr()
     }
 }
 
-void Ebr::EnterCriticalRegion()
+void EbrManager::EnterCriticalRegion()
 {
     EbrRecord* p = GetEbrRecForCurrentThread();
     p->active.store(true);
-    p->epoch.store(m_global_epoch.load());
+    p->epoch.store(m_global_epoch.load(std::memory_order_acquire));
 }
 
-void Ebr::ExitCriticalRegion()
+void EbrManager::ExitCriticalRegion()
 {
     EbrRecord* p = GetEbrRecForCurrentThread();
     p->active.store(false);
 }
 
-Ebr::EbrRecord* Ebr::AllocateEbrRec()
+EbrManager::EbrRecord* EbrManager::AllocateEbrRec()
 {
     for (auto* p = m_head.load(std::memory_order_acquire); p; p = p->next) {
         if (p->in_use.test_and_set(std::memory_order_acquire)) {
@@ -59,7 +59,7 @@ Ebr::EbrRecord* Ebr::AllocateEbrRec()
     return new_rec.release();
 }
                  
-Ebr::EbrRecord* Ebr::GetEbrRecForCurrentThread()
+EbrManager::EbrRecord* EbrManager::GetEbrRecForCurrentThread()
 {
     if (m_my_ebr_rec.get() == nullptr) {
         m_my_ebr_rec.reset(AllocateEbrRec());
@@ -67,10 +67,10 @@ Ebr::EbrRecord* Ebr::GetEbrRecForCurrentThread()
     return m_my_ebr_rec.get();
 }
 
-void Ebr::Scan()
+void EbrManager::Scan()
 {
-    int global_epoch = m_global_epoch.load();
-    for (auto* p = m_head.load(); p; p = p->next) {
+    int global_epoch = m_global_epoch.load(std::memory_order_acquire);
+    for (auto* p = m_head.load(std::memory_order_acquire); p; p = p->next) {
         if (p->active.load() && p->epoch != global_epoch) {
             return;
         }
@@ -78,19 +78,18 @@ void Ebr::Scan()
 
     int next_epoch = (global_epoch + 1) % 3;
     FreeRetireList(next_epoch);
-    m_global_epoch.store(next_epoch);
+    m_global_epoch.store(next_epoch, std::memory_order_release);
 }
 
-void Ebr::FreeRetireList(int epoch)
+void EbrManager::FreeRetireList(int epoch)
 {
-    NodeToRetire* head = nullptr;
-    do {
-        head = m_retire_list[epoch].load();
-    } while (m_retire_list[epoch].compare_exchange_weak(head, nullptr));
+    NodeToRetire* head = m_retire_list[epoch].load(std::memory_order_relaxed);
+    while (!m_retire_list[epoch].compare_exchange_weak(head, nullptr,
+            std::memory_order_release, std::memory_order_relaxed));
     FreeList(head);
 }
 
-void Ebr::FreeList(NodeToRetire* head)
+void EbrManager::FreeList(NodeToRetire* head)
 {
     for (auto* p = head; p;) {
         auto* q = p;
@@ -100,7 +99,7 @@ void Ebr::FreeList(NodeToRetire* head)
 }    
 
 // static
-void Ebr::RetireEbrRecord(EbrRecord* p)
+void EbrManager::RetireEbrRecord(EbrRecord* p)
 {
     p->in_use.clear(std::memory_order_release);
     p->DecRef();
