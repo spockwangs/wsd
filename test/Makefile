@@ -39,7 +39,8 @@ TESTS = callback_test \
 	concurrent_map_test \
 	loading_cache_test \
 	singleton_test \
-	hazard_pointer_test
+	hazard_pointer_test \
+	ebr_test
 
 HEADER_TESTS = bind_header_test.o \
 	callback_header_test.o \
@@ -123,6 +124,9 @@ singleton_test : singleton_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 hazard_pointer_test : hazard_pointer_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
+
+ebr_test : ebr_test.o gtest_main.a $(USER_DIR)/src/libwsd.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 DEPENDS = $(patsubst %.cc,.%.d,$(wildcard *.cc))
