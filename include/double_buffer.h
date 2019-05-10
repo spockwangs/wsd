@@ -11,6 +11,7 @@
 #pragma once
 
 #include <atomic>
+#include <thread>
 
 namespace wsd {
 
@@ -43,6 +44,9 @@ private:
         while (true) {
             idx = m_read_idx.load(std::memory_order_relaxed);
             m_data[idx].reader_cnt.fetch_add(1, std::memory_order_relaxed);
+            // Although |m_read_idx| may change multiple times and change back to |idx| between the
+            // above loading and this loading, it does not matter. As long as it changes back to
+            // |idx|, it means the data pointed to by |idx| has complete updating and can be read.
             if (idx == m_read_idx.load(std::memory_order_acquire))
                 break;
             ReleaseReading(idx);
@@ -55,14 +59,15 @@ private:
         p->reader_cnt.fetch_sub(1, std::memory_order_release);
     }
 
-    RefCountedData* TryAcquireForWriting()
+    RefCountedData* AcquireForWriting()
     {
-        int idx = 1 - m_read_idx.load(std::memory_order_relaxed);
-        if (m_data[idx].reader_cnt.load(std::memory_order_acquire) == 0) {
-            return m_data[idx];
+        for (;;) {
+            int idx = 1 - m_read_idx.load(std::memory_order_relaxed);
+            if (m_data[idx].reader_cnt.load(std::memory_order_acquire) == 0) {
+                return m_data[idx];
+            }
+            std::this_thread::yield();
         }
-        // Some thread is reading; wait a moment.
-        return nullptr;
     }
 
     void ReleaseWriting()
@@ -110,7 +115,7 @@ class DoubleBufferWriter final {
 public:
     DoubleBufferWriter(DoubleBuffer<T>* db_p)
         : m_db_p(db_p),
-          m_data_p(m_db_p->TryAcquireForWriting())
+          m_data_p(m_db_p->AcquireForWriting())
     {
     }
 
@@ -122,9 +127,8 @@ public:
     
     T* Get()
     {
-        if (m_data_p)
-            return &m_data_p->data;
-        return nullptr;
+        assert(m_data_p);
+        return &m_data_p->data;
     }
 
 private:
