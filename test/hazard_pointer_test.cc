@@ -5,9 +5,11 @@
 //
 
 #include "hazard_pointer.h"
+
 #include <atomic>
-#include <utility>
 #include <future>
+#include <utility>
+
 #include "gtest/gtest.h"
 
 template <typename T>
@@ -25,7 +27,7 @@ public:
             delete q;
         }
     }
-    
+
     void Enqueue(T&& t);
 
     bool Dequeue(T* p);
@@ -52,8 +54,7 @@ void FifoQueue<T>::Enqueue(T&& data)
     while (true) {
         t = m_tail.load();
         hp.Acquire(t);
-        if (m_tail.load() != t)
-            continue;
+        if (m_tail.load() != t) continue;
         NodeType* next = t->next.load();
         if (m_tail.load() != t) {
             continue;
@@ -79,22 +80,18 @@ bool FifoQueue<T>::Dequeue(T* p)
     while (true) {
         h = m_head.load();
         hp.Acquire(h);
-        if (m_head.load() != h)
-            continue;
+        if (m_head.load() != h) continue;
         NodeType* t = m_tail.load();
         NodeType* next = h->next.load();
         hp1.Acquire(next);
-        if (h != m_head.load())
-            continue;
-        if (next == nullptr)
-            return false;
+        if (h != m_head.load()) continue;
+        if (next == nullptr) return false;
         if (h == t) {
             m_tail.compare_exchange_weak(t, next);
             continue;
         }
         *p = next->data;
-        if (m_head.compare_exchange_weak(h, next))
-            break;
+        if (m_head.compare_exchange_weak(h, next)) break;
     }
     m_hazard_manager.RetireNode(h);
     return true;
@@ -146,11 +143,11 @@ TEST(HazardPointer, SequentialExecution2)
 
         hp2.Acquire(&a);
         hp1.Acquire(&b);
-        EXPECT_EQ(2, hp_mgr.TEST_GetNumberOfHp());        
+        EXPECT_EQ(2, hp_mgr.TEST_GetNumberOfHp());
     }
 
     // The destructors of hp1 and hp2 should release automatically.
-    EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());            
+    EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());
 }
 
 TEST(HazardPointer, SequentialExecution3)
@@ -168,7 +165,7 @@ TEST(HazardPointer, SequentialExecution3)
 
     hp_mgr.RetireNode(p);
     EXPECT_TRUE(hp_mgr.TEST_RetireListContains(p));
-    
+
     p = new int;
     hp_mgr.RetireNode(p);
     // Now the retire list of current thread should have been reclaimed.
@@ -179,7 +176,7 @@ TEST(HazardPointer, SequentialExecution3)
 TEST(HazardPointer, ConcurrentExecution)
 {
     wsd::HazardManager hp_mgr(1);
-    int *p = new int;
+    int* p = new int;
 
     std::promise<void> go;
     std::shared_future<void> ready(go.get_future());
@@ -188,27 +185,24 @@ TEST(HazardPointer, ConcurrentExecution)
     std::promise<void> go2;
     std::shared_future<void> ready2(go2.get_future());
 
-    std::future<void> done1 = std::async(std::launch::async,
-                                         [&, ready, p, ready2] () {
-                                             wsd::HazardPointer hp(hp_mgr, 0);
-                                             thread1_ready.set_value();
-                                             ready.wait();
-                                             hp.Acquire(p);
+    std::future<void> done1 = std::async(std::launch::async, [&, ready, p, ready2]() {
+        wsd::HazardPointer hp(hp_mgr, 0);
+        thread1_ready.set_value();
+        ready.wait();
+        hp.Acquire(p);
 
-                                             thread1_ready2.set_value();
-                                             ready2.wait();
-                                         });
-    std::future<void> done2 = std::async(std::launch::async,
-                                         [&, ready, p, ready2] ()
-                                         {
-                                             wsd::HazardPointer hp(hp_mgr, 0);
-                                             thread2_ready.set_value();
-                                             ready.wait();
-                                             hp.Acquire(p);
+        thread1_ready2.set_value();
+        ready2.wait();
+    });
+    std::future<void> done2 = std::async(std::launch::async, [&, ready, p, ready2]() {
+        wsd::HazardPointer hp(hp_mgr, 0);
+        thread2_ready.set_value();
+        ready.wait();
+        hp.Acquire(p);
 
-                                             thread2_ready2.set_value();
-                                             ready2.wait();
-                                         });
+        thread2_ready2.set_value();
+        ready2.wait();
+    });
 
     thread1_ready.get_future().wait();
     thread2_ready.get_future().wait();
@@ -222,7 +216,7 @@ TEST(HazardPointer, ConcurrentExecution)
     go2.set_value();
     done1.wait();
     done2.wait();
-    EXPECT_FALSE(hp_mgr.TEST_HpListContains(p));    
+    EXPECT_FALSE(hp_mgr.TEST_HpListContains(p));
     EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());
     delete p;
 }
@@ -230,7 +224,7 @@ TEST(HazardPointer, ConcurrentExecution)
 TEST(HazardPointer, ConcurrentExecution2)
 {
     wsd::HazardManager hp_mgr(1);
-    int *p = new int;
+    int* p = new int;
 
     std::promise<void> go;
     std::shared_future<void> ready(go.get_future());
@@ -239,29 +233,26 @@ TEST(HazardPointer, ConcurrentExecution2)
     std::promise<void> go2;
     std::shared_future<void> ready2(go2.get_future());
 
-    std::future<void> done1 = std::async(std::launch::async,
-                                         [&, ready, p, ready2] () {
-                                             wsd::HazardPointer hp(hp_mgr, 0);
-                                             thread1_ready.set_value();
-                                             ready.wait();
-                                             hp.Acquire(p);
+    std::future<void> done1 = std::async(std::launch::async, [&, ready, p, ready2]() {
+        wsd::HazardPointer hp(hp_mgr, 0);
+        thread1_ready.set_value();
+        ready.wait();
+        hp.Acquire(p);
 
-                                             thread1_ready2.set_value();
-                                             ready2.wait();
-                                         });
-    std::future<void> done2 = std::async(std::launch::async,
-                                         [&, ready, p, ready2] ()
-                                         {
-                                             wsd::HazardPointer hp(hp_mgr, 0);
-                                             thread2_ready.set_value();
-                                             ready.wait();
-                                             hp.Acquire(p);
-                                             hp.Release();
-                                             
-                                             thread2_ready2.set_value();
-                                             ready2.wait();
-                                             hp_mgr.RetireNode(p);
-                                         });
+        thread1_ready2.set_value();
+        ready2.wait();
+    });
+    std::future<void> done2 = std::async(std::launch::async, [&, ready, p, ready2]() {
+        wsd::HazardPointer hp(hp_mgr, 0);
+        thread2_ready.set_value();
+        ready.wait();
+        hp.Acquire(p);
+        hp.Release();
+
+        thread2_ready2.set_value();
+        ready2.wait();
+        hp_mgr.RetireNode(p);
+    });
 
     thread1_ready.get_future().wait();
     thread2_ready.get_future().wait();
@@ -275,6 +266,6 @@ TEST(HazardPointer, ConcurrentExecution2)
     go2.set_value();
     done1.wait();
     done2.wait();
-    EXPECT_FALSE(hp_mgr.TEST_HpListContains(p));    
+    EXPECT_FALSE(hp_mgr.TEST_HpListContains(p));
     EXPECT_EQ(0, hp_mgr.TEST_GetNumberOfHp());
 }

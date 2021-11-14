@@ -5,9 +5,11 @@
 //
 
 #include "concurrent_map.h"
-#include "gtest/gtest.h"
-#include "es_test.h"
+
 #include <algorithm>
+
+#include "es_test.h"
+#include "gtest/gtest.h"
 
 TEST(concurrent_map, construct)
 {
@@ -23,7 +25,7 @@ TEST(concurrent_map, construct)
     c.insert(std::make_pair(4, 1));
     wsd::ConcurrentMap<int, int> m2(c.begin(), c.end());
     EXPECT_EQ(c.size(), m2.size());
-    //EXPECT_TRUE(std::equal(c.begin(), c.end(), m2.begin()));
+    // EXPECT_TRUE(std::equal(c.begin(), c.end(), m2.begin()));
     EXPECT_FALSE(m2.empty());
     EXPECT_TRUE(m2.count(1));
     EXPECT_TRUE(m2.count(2));
@@ -111,11 +113,11 @@ TEST(concurrent_map, const_accessor)
     wsd::ConcurrentMap<int, int>::ConstAccessor const_accessor;
     EXPECT_FALSE(m.find(1, &const_accessor));
     EXPECT_TRUE(const_accessor.empty());
-    
+
     EXPECT_TRUE(m.insert(std::make_pair(1, 1)));
     EXPECT_EQ(1U, m.size());
     EXPECT_EQ(1U, m.count(1));
-    
+
     EXPECT_TRUE(m.find(1, &const_accessor));
     EXPECT_FALSE(const_accessor.empty());
     EXPECT_EQ(1, const_accessor->first);
@@ -129,7 +131,7 @@ TEST(concurrent_map, const_accessor)
 
     // Now there should be no lock on the pair(1, x).
     EXPECT_TRUE(m.find(1, &const_accessor));
-    
+
     EXPECT_FALSE(m.insert(2, &const_accessor));
     EXPECT_EQ(2, const_accessor->second);
 
@@ -145,11 +147,11 @@ TEST(concurrent_map, accessor)
     wsd::ConcurrentMap<int, int>::Accessor accessor;
     EXPECT_FALSE(m.find(1, &accessor));
     EXPECT_TRUE(accessor.empty());
-    
+
     EXPECT_TRUE(m.insert(std::make_pair(1, 1)));
     EXPECT_EQ(1U, m.size());
     EXPECT_EQ(1U, m.count(1));
-    
+
     EXPECT_TRUE(m.find(1, &accessor));
     EXPECT_FALSE(accessor.empty());
     EXPECT_EQ(1, accessor->first);
@@ -163,7 +165,7 @@ TEST(concurrent_map, accessor)
 
     // Now there should be no lock on the pair(1, x).
     EXPECT_TRUE(m.find(1, &accessor));
-    
+
     EXPECT_FALSE(m.insert(2, &accessor));
     EXPECT_EQ(2, accessor->second);
 
@@ -176,11 +178,10 @@ TEST(concurrent_map, iteartor)
     wsd::ConcurrentMap<int, int> m;
     EXPECT_EQ(0, std::distance(m.begin(), m.end()));
 
-    std::vector<std::pair<int, int> > v;
+    std::vector<std::pair<int, int>> v;
     int n = std::rand() % 10000;
-    for (int i = 0; i < n; i++)
-        v.push_back(std::make_pair(i, std::rand()));
-    
+    for (int i = 0; i < n; i++) v.push_back(std::make_pair(i, std::rand()));
+
     wsd::ConcurrentMap<int, int> m2(v.begin(), v.end());
     for (wsd::ConcurrentMap<int, int>::const_iterator it = m2.begin(); it != m2.end(); ++it)
         EXPECT_TRUE(std::find(v.begin(), v.end(), std::make_pair(it->first, it->second)) != v.end());
@@ -193,24 +194,20 @@ TEST(concurrent_map, iteartor)
     for (wsd::ConcurrentMap<int, int>::const_iterator it = m4.begin(); it != m4.end(); ++it)
         EXPECT_TRUE(std::find(v.begin(), v.end(), std::make_pair(it->first, it->second)) != v.end());
     EXPECT_EQ(v.size(), (size_t) std::distance(m4.begin(), m4.end()));
-
 }
 
 template <typename K, typename V>
 bool checkInvariant(const wsd::ConcurrentMap<K, V>& c)
 {
-    if (c.empty() && c.size() > 0)
-        return false;
+    if (c.empty() && c.size() > 0) return false;
 
-    if (!c.empty() && c.size() == 0)
-        return false;
+    if (!c.empty() && c.size() == 0) return false;
 
-    if ((size_t) std::distance(c.begin(), c.end()) != c.size())
-        return false;
-    
+    if ((size_t) std::distance(c.begin(), c.end()) != c.size()) return false;
+
     return true;
 }
-            
+
 struct test_construct {
     void operator()(int) const
     {
@@ -219,25 +216,24 @@ struct test_construct {
         EXPECT_EQ(0U, m.size());
     }
 };
-    
+
 struct test_construct_iterator {
     void operator()(int) const
     {
-        std::vector<std::pair<TestClass, TestClass> > v;
+        std::vector<std::pair<TestClass, TestClass>> v;
         for (size_t i = 0, size = std::rand() % 100; i < size; i++)
             v.push_back(std::make_pair(TestClass(i), TestClass()));
 
         wsd::ConcurrentMap<TestClass, TestClass> m(v.begin(), v.end());
         EXPECT_EQ(v.size(), m.size());
-        for (size_t i = 0; i < v.size(); i++)
-            EXPECT_EQ(1U, m.count(i));
+        for (size_t i = 0; i < v.size(); i++) EXPECT_EQ(1U, m.count(i));
     }
 };
 
 struct test_empty {
-    test_empty(const wsd::ConcurrentMap<TestClass, TestClass>& orig)
-        : orig(orig)
-    {}
+    test_empty(const wsd::ConcurrentMap<TestClass, TestClass>& orig) : orig(orig)
+    {
+    }
 
     void operator()(int) const
     {
@@ -248,9 +244,9 @@ struct test_empty {
 };
 
 struct test_size {
-    test_size(const wsd::ConcurrentMap<TestClass, TestClass>& orig)
-        : orig(orig)
-    {}
+    test_size(const wsd::ConcurrentMap<TestClass, TestClass>& orig) : orig(orig)
+    {
+    }
 
     void operator()(size_t n) const
     {
@@ -261,9 +257,9 @@ struct test_size {
 };
 
 struct test_count {
-    test_count(const wsd::ConcurrentMap<TestClass, TestClass>& orig)
-        : orig(orig)
-    {}
+    test_count(const wsd::ConcurrentMap<TestClass, TestClass>& orig) : orig(orig)
+    {
+    }
 
     void operator()(int) const
     {
@@ -274,9 +270,9 @@ struct test_count {
 };
 
 struct test_find {
-    test_find(const TestClass& key)
-        : key(key)
-    {}
+    test_find(const TestClass& key) : key(key)
+    {
+    }
 
     void operator()(wsd::ConcurrentMap<TestClass, TestClass>& t) const
     {
@@ -286,7 +282,7 @@ struct test_find {
         const_accessor.release();
         EXPECT_TRUE(t.find(key, &accessor));
         accessor.release();
-        
+
         t.erase(key);
         EXPECT_FALSE(t.find(key, &const_accessor));
         EXPECT_FALSE(t.find(key, &accessor));
@@ -296,8 +292,7 @@ struct test_find {
 };
 
 struct test_insert {
-    test_insert(const wsd::ConcurrentMap<TestClass, TestClass>& orig)
-        : orig(orig)
+    test_insert(const wsd::ConcurrentMap<TestClass, TestClass>& orig) : orig(orig)
     {
         insertValue.first = TestClass(std::rand());
         insertValue.second = TestClass(std::rand());
@@ -320,8 +315,7 @@ struct test_insert {
 };
 
 struct test_insert_value_const_accessor {
-    test_insert_value_const_accessor(const wsd::ConcurrentMap<TestClass, TestClass>& orig)
-        : orig(orig)
+    test_insert_value_const_accessor(const wsd::ConcurrentMap<TestClass, TestClass>& orig) : orig(orig)
     {
         insertValue.first = TestClass(std::rand());
         insertValue.second = TestClass(std::rand());
@@ -347,8 +341,7 @@ struct test_insert_value_const_accessor {
 };
 
 struct test_insert_key_const_accessor {
-    test_insert_key_const_accessor(const wsd::ConcurrentMap<TestClass, TestClass>& orig)
-        : orig(orig)
+    test_insert_key_const_accessor(const wsd::ConcurrentMap<TestClass, TestClass>& orig) : orig(orig)
     {
         insertKey = TestClass(std::rand());
     }
@@ -373,8 +366,7 @@ struct test_insert_key_const_accessor {
 };
 
 struct test_insert_value_accessor {
-    test_insert_value_accessor(const wsd::ConcurrentMap<TestClass, TestClass>& orig)
-        : orig(orig)
+    test_insert_value_accessor(const wsd::ConcurrentMap<TestClass, TestClass>& orig) : orig(orig)
     {
         insertValue.first = TestClass(std::rand());
         insertValue.second = TestClass(std::rand());
@@ -400,8 +392,7 @@ struct test_insert_value_accessor {
 };
 
 struct test_insert_key_accessor {
-    test_insert_key_accessor(const wsd::ConcurrentMap<TestClass, TestClass>& orig)
-        : orig(orig)
+    test_insert_key_accessor(const wsd::ConcurrentMap<TestClass, TestClass>& orig) : orig(orig)
     {
         insertKey = TestClass(std::rand());
     }
@@ -426,8 +417,7 @@ struct test_insert_key_accessor {
 };
 
 struct test_erase {
-    test_erase(const TestClass& key)
-        : key(key)
+    test_erase(const TestClass& key) : key(key)
     {
     }
 

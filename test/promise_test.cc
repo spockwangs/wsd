@@ -5,11 +5,13 @@
 //
 
 #include "promise.h"
-#include "gtest/gtest.h"
-#include "bind.h"
+
 #include <iostream>
-#include "when_all.h"
+
+#include "bind.h"
 #include "es_test.h"
+#include "gtest/gtest.h"
+#include "when_all.h"
 
 using namespace std;
 
@@ -32,7 +34,7 @@ TEST(promise, do_value)
 {
     wsd::Promise<int> promise;
     wsd::Future<int> future = promise.getFuture();
-    
+
     future.then(wsd::bind(&do_value));
     promise.setValue(10);
     EXPECT_TRUE(future.hasValue());
@@ -57,7 +59,7 @@ TEST(promise, do_ref)
     EXPECT_EQ(10, future.get());
     EXPECT_THROW(promise.setValue(value), wsd::PromiseAlreadySatisfiedException);
 }
-    
+
 void do_exception(const wsd::Future<int>& i)
 {
     EXPECT_THROW(i.get(), const char*);
@@ -67,7 +69,7 @@ TEST(promise, do_exception)
 {
     wsd::Promise<int> promise;
     wsd::Future<int> future = promise.getFuture();
-    
+
     future.then(wsd::bind(&do_exception));
     try {
         throw "error";
@@ -84,7 +86,7 @@ wsd::Future<int> async_get_int(const wsd::Future<int>& f)
 {
     int i = f.get();
     wsd::Promise<int> p;
-    p.setValue(i+1);
+    p.setValue(i + 1);
     return p.getFuture();
 }
 
@@ -117,8 +119,7 @@ TEST(promise, then_then)
     // Test sequential composition of two futures.
     wsd::Promise<int> promise;
     wsd::Future<int> future = promise.getFuture();
-    future.then(wsd::bind(&async_get_int))
-          .then(wsd::bind(&do_async_int));
+    future.then(wsd::bind(&async_get_int)).then(wsd::bind(&do_async_int));
     promise.setValue(8);
 }
 
@@ -127,11 +128,10 @@ TEST(promise, then_then2)
     // Test sequential composition of two futures with the first throwing an exception.
     wsd::Promise<int> promise;
     wsd::Future<int> future = promise.getFuture();
-    future.then(wsd::bind(&async_get_exception))
-          .then(wsd::bind(&do_async_exception));
+    future.then(wsd::bind(&async_get_exception)).then(wsd::bind(&do_async_exception));
     promise.setValue(8);
 }
-    
+
 wsd::Future<void> async_get_void(const wsd::Future<int>&)
 {
     wsd::Promise<void> p;
@@ -148,15 +148,14 @@ TEST(promise, then_then3)
 {
     wsd::Promise<int> promise;
     wsd::Future<int> future = promise.getFuture();
-    future.then(wsd::bind(&async_get_void))
-          .then(wsd::bind(&do_async_void));
+    future.then(wsd::bind(&async_get_void)).then(wsd::bind(&do_async_void));
     promise.setValue(8);
 }
 
 wsd::Future<int> async_inc(const wsd::Future<int>& f)
 {
     wsd::Promise<int> p;
-    p.setValue(f.get()+1);
+    p.setValue(f.get() + 1);
     return p.getFuture();
 }
 
@@ -167,7 +166,7 @@ wsd::Future<void> async_process(const wsd::Future<int>& f)
         int i = f.get();
         (void) i;
         p.set();
-                    });
+    });
     return p.getFuture();
 }
 
@@ -182,9 +181,7 @@ TEST(promise, then_then4)
     // the second returns Future<void>.
     wsd::Promise<int> promise;
     wsd::Future<int> future = promise.getFuture();
-    future.then(wsd::bind(&async_inc))
-          .then(wsd::bind(&async_process))
-          .then(wsd::bind(&complete));
+    future.then(wsd::bind(&async_inc)).then(wsd::bind(&async_process)).then(wsd::bind(&complete));
 }
 
 wsd::Future<int> async_exception(const wsd::Future<int>&)
@@ -210,9 +207,7 @@ TEST(promise, then_then5)
     // the second returns Future<void>.
     wsd::Promise<int> promise;
     wsd::Future<int> future = promise.getFuture();
-    future.then(wsd::bind(&async_exception))
-          .then(wsd::bind(&async_process2))
-          .then(wsd::bind(&complete2));
+    future.then(wsd::bind(&async_exception)).then(wsd::bind(&async_process2)).then(wsd::bind(&complete2));
 }
 
 wsd::Future<void> async_process3(const wsd::Future<int>& f)
@@ -224,7 +219,7 @@ wsd::Future<void> async_process3(const wsd::Future<int>& f)
         EXPECT_EQ(0, e);
         throw "xxx";
     }
-    return wsd::makeFuture();    
+    return wsd::makeFuture();
 }
 
 void complete3(const wsd::Future<void>& f)
@@ -238,9 +233,7 @@ TEST(promise, then_then6)
     // the second captures the exception and returns Future<void> with another exception.
     wsd::Promise<int> promise;
     wsd::Future<int> future = promise.getFuture();
-    future.then(wsd::bind(&async_exception))
-          .then(wsd::bind(&async_process3))
-          .then(wsd::bind(&complete3));
+    future.then(wsd::bind(&async_exception)).then(wsd::bind(&async_process3)).then(wsd::bind(&complete3));
 }
 
 void getThree(const wsd::Future<int>& f)
@@ -279,9 +272,9 @@ TEST(promise, prompt_future2)
     EXPECT_TRUE(g_has_run);
 }
 
-void do_all_value(const wsd::Future<std::tuple<wsd::Future<int>, wsd::Future<int> > >& p)
+void do_all_value(const wsd::Future<std::tuple<wsd::Future<int>, wsd::Future<int>>>& p)
 {
-    const std::tuple<wsd::Future<int>, wsd::Future<int> >& t = p.get();
+    const std::tuple<wsd::Future<int>, wsd::Future<int>>& t = p.get();
     EXPECT_EQ(3, std::get<0>(t).get());
     EXPECT_EQ(4, std::get<1>(t).get());
 }
@@ -298,9 +291,9 @@ TEST(promise, when_all)
     p2.setValue(4);
 }
 
-void do_value_exception(const wsd::Future<std::tuple<wsd::Future<int>, wsd::Future<int> > >& p)
+void do_value_exception(const wsd::Future<std::tuple<wsd::Future<int>, wsd::Future<int>>>& p)
 {
-    const std::tuple<wsd::Future<int>, wsd::Future<int> >& t = p.get();
+    const std::tuple<wsd::Future<int>, wsd::Future<int>>& t = p.get();
     EXPECT_EQ(3, std::get<0>(t).get());
     EXPECT_THROW(std::get<1>(t).get(), std::runtime_error);
 }
@@ -318,9 +311,9 @@ TEST(promise, when_all_with_one_exception)
     p2.setException(std::make_exception_ptr(std::runtime_error("")));
 }
 
-void do_two_exceptions(const wsd::Future<std::tuple<wsd::Future<int>, wsd::Future<int> > >& p)
+void do_two_exceptions(const wsd::Future<std::tuple<wsd::Future<int>, wsd::Future<int>>>& p)
 {
-    const std::tuple<wsd::Future<int>, wsd::Future<int> >& t = p.get();
+    const std::tuple<wsd::Future<int>, wsd::Future<int>>& t = p.get();
     EXPECT_THROW(std::get<0>(t).get(), std::runtime_error);
     EXPECT_THROW(std::get<1>(t).get(), std::runtime_error);
 }
@@ -337,9 +330,9 @@ TEST(promise, when_all_with_two_exceptions)
     p2.setException(std::make_exception_ptr(std::runtime_error("")));
 }
 
-void do_three_values(const wsd::Future<std::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> > >& p)
+void do_three_values(const wsd::Future<std::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string>>>& p)
 {
-    const std::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> >& t = p.get();
+    const std::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string>>& t = p.get();
     EXPECT_EQ(true, std::get<0>(t).get());
     EXPECT_EQ(34, std::get<1>(t).get());
     EXPECT_EQ("hello", std::get<2>(t).get());
@@ -358,13 +351,14 @@ TEST(promise, when_all_with_three_values)
         p2.setValue(34);
         sleep(1);
         p3.setValue("hello");
-    } catch (...) {}
+    } catch (...) {
+    }
 }
 
 void do_two_values_and_one_exception(
-        const wsd::Future<std::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> > >& p)
+        const wsd::Future<std::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string>>>& p)
 {
-    const std::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string> >& t = p.get();
+    const std::tuple<wsd::Future<bool>, wsd::Future<int>, wsd::Future<string>>& t = p.get();
     EXPECT_EQ(true, std::get<0>(t).get());
     EXPECT_THROW(std::get<1>(t).get(), std::runtime_error);
     EXPECT_EQ("hello", std::get<2>(t).get());
@@ -377,14 +371,14 @@ TEST(promise, when_all_with_two_values_and_one_exception)
         wsd::Promise<int> p2;
         wsd::Promise<string> p3;
 
-        wsd::whenAll(p1.getFuture(), p2.getFuture(), p3.getFuture())
-            .then(wsd::bind(&do_two_values_and_one_exception));
+        wsd::whenAll(p1.getFuture(), p2.getFuture(), p3.getFuture()).then(wsd::bind(&do_two_values_and_one_exception));
 
         p1.setValue(true);
         p2.setException(std::make_exception_ptr(std::runtime_error("")));
         sleep(1);
         p3.setValue("hello");
-    } catch (...) {}
+    } catch (...) {
+    }
 }
 
 int do_bool(const wsd::Future<bool>& future)
@@ -415,39 +409,35 @@ TEST(promise, then)
     wsd::Promise<bool> p1;
 
     p1.getFuture()
-      .then(wsd::bind(&do_bool))
-      .then(wsd::bind(&do_int))
-      .then(wsd::bind(&do_long))
-      .then(wsd::bind(&do_exception2));
+            .then(wsd::bind(&do_bool))
+            .then(wsd::bind(&do_int))
+            .then(wsd::bind(&do_long))
+            .then(wsd::bind(&do_exception2));
     p1.setValue(true);
 }
 
-void do_vector_futures(const wsd::Future<std::vector<wsd::Future<int> > >& future)
+void do_vector_futures(const wsd::Future<std::vector<wsd::Future<int>>>& future)
 {
-    const std::vector<wsd::Future<int> >& futures = future.get();
-    for (size_t i = 0; i < futures.size(); i++)
-        EXPECT_EQ(i, (size_t) futures[i].get());
+    const std::vector<wsd::Future<int>>& futures = future.get();
+    for (size_t i = 0; i < futures.size(); i++) EXPECT_EQ(i, (size_t) futures[i].get());
 }
 
 TEST(promise, iterator)
 {
     try {
-        std::vector<wsd::Promise<int> > promises;
-        for (size_t i = 0; i < 100; i++)
-            promises.push_back(wsd::Promise<int>());
-        std::vector<wsd::Future<int> > futures;
-        for (size_t i = 0; i < promises.size(); i++)
-            futures.push_back(promises[i].getFuture());
+        std::vector<wsd::Promise<int>> promises;
+        for (size_t i = 0; i < 100; i++) promises.push_back(wsd::Promise<int>());
+        std::vector<wsd::Future<int>> futures;
+        for (size_t i = 0; i < promises.size(); i++) futures.push_back(promises[i].getFuture());
 
-        wsd::whenAll<int>(futures.begin(), futures.end())
-            .then(wsd::bind(&do_vector_futures));
+        wsd::whenAll<int>(futures.begin(), futures.end()).then(wsd::bind(&do_vector_futures));
         for (size_t i = 0; i < promises.size(); i++) {
             promises[i].setValue(i);
             EXPECT_EQ(i, (size_t) futures[i].get());
         }
-        for (size_t i = 0; i < futures.size(); i++)
-            EXPECT_EQ(i, (size_t) futures[i].get());
-    } catch (...) {}
+        for (size_t i = 0; i < futures.size(); i++) EXPECT_EQ(i, (size_t) futures[i].get());
+    } catch (...) {
+    }
 }
 
 void run_or_not_run(const wsd::Future<TestClass>& f)
@@ -471,7 +461,7 @@ TEST(promise, exception_safety)
     p.set();
     ES_NO_THROW(p.getFuture().isDone());
     ES_NO_THROW(p.getFuture().get());
-    
+
     // Promise<void>::setException() should not throw exception.
     wsd::Promise<void> p2;
     std::exception_ptr ex_ptr = std::make_exception_ptr(std::runtime_error(""));
@@ -493,7 +483,7 @@ TEST(promise, exception_safety)
     ES_NO_THROW(p4.setException(ex_ptr));
     ES_NO_THROW(p4.getFuture().isDone());
     EXPECT_ANY_THROW(p4.getFuture().get());
-    
+
     // Test the exception-safety of then().  If then() throws an exception the registered
     // callback should not run, and if not the callback should run once the future is
     // satisfied.
@@ -515,7 +505,7 @@ TEST(promise, exception_safety)
         }
     }
     g_throw_counter = -1;
-    
+
     // set() after then()
     succeeded = false;
     for (int next_throw_count = 0; !succeeded; next_throw_count++) {
@@ -551,7 +541,7 @@ TEST(promise, exception_safety)
         }
     }
     g_throw_counter = -1;
-    
+
     // setException() after then().
     succeeded = false;
     for (int next_throw_count = 0; !succeeded; next_throw_count++) {
@@ -589,7 +579,7 @@ TEST(promise, exception_safety)
         }
     }
     g_throw_counter = -1;
-    
+
     // set() after then().
     succeeded = false;
     for (int next_throw_count = 0; !succeeded; next_throw_count++) {
@@ -607,7 +597,7 @@ TEST(promise, exception_safety)
         }
     }
     g_throw_counter = -1;
-    
+
     // setException() before then().
     succeeded = false;
     for (int next_throw_count = 0; !succeeded; next_throw_count++) {

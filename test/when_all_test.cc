@@ -5,12 +5,14 @@
 //
 
 #include "when_all.h"
-#include "gtest/gtest.h"
-#include "es_test.h"
+
 #include <iostream>
 #include <stdexcept>
-#include <vector>
 #include <tuple>
+#include <vector>
+
+#include "es_test.h"
+#include "gtest/gtest.h"
 
 using namespace std;
 
@@ -18,7 +20,7 @@ bool g_has_run = false;
 bool g_has_exception = false;
 
 void run_or_not_run(
-        const wsd::Future<std::tuple<wsd::Future<TestClass>, wsd::Future<TestClass>, wsd::Future<TestClass> > >& future)
+        const wsd::Future<std::tuple<wsd::Future<TestClass>, wsd::Future<TestClass>, wsd::Future<TestClass>>>& future)
 {
     g_has_run = true;
     g_has_exception = false;
@@ -32,7 +34,7 @@ void run_or_not_run(
     }
 }
 
-void run_or_not_run_vector(const wsd::Future<vector<wsd::Future<TestClass> > >& future)
+void run_or_not_run_vector(const wsd::Future<vector<wsd::Future<TestClass>>>& future)
 {
     g_has_run = true;
     g_has_exception = false;
@@ -58,14 +60,12 @@ TEST(when_all, exception_safety)
         g_has_run = false;
         try {
             wsd::Promise<TestClass> p1, p2, p3;
-            wsd::whenAll(p1.getFuture(), p2.getFuture(), p3.getFuture())
-                .then(wsd::bind(&run_or_not_run));
+            wsd::whenAll(p1.getFuture(), p2.getFuture(), p3.getFuture()).then(wsd::bind(&run_or_not_run));
             p1.setValue(TestClass(0xAA));
             p2.setValue(TestClass(0xBB));
             p3.setValue(TestClass(0xCC));
             EXPECT_TRUE(g_has_run);
-            if (!g_has_exception)
-                succeeded = true;
+            if (!g_has_exception) succeeded = true;
         } catch (...) {
             EXPECT_FALSE(g_has_run);
         }
@@ -82,11 +82,9 @@ TEST(when_all, exception_safety)
             p1.setValue(TestClass(0xAA));
             p2.setValue(TestClass(0xBB));
             p3.setValue(TestClass(0xCC));
-            wsd::whenAll(p1.getFuture(), p2.getFuture(), p3.getFuture())
-                .then(wsd::bind(&run_or_not_run));
+            wsd::whenAll(p1.getFuture(), p2.getFuture(), p3.getFuture()).then(wsd::bind(&run_or_not_run));
             EXPECT_TRUE(g_has_run);
-            if (!g_has_exception)
-                succeeded = true;
+            if (!g_has_exception) succeeded = true;
         } catch (...) {
             EXPECT_FALSE(g_has_run);
         }
@@ -103,13 +101,11 @@ TEST(when_all, exception_safety)
             p2.setValue(TestClass(0xBB));
             p3.setValue(TestClass(0xCC));
 
-            wsd::whenAll(p1.getFuture(), p2.getFuture(), p3.getFuture())
-                .then(wsd::bind(&run_or_not_run));
+            wsd::whenAll(p1.getFuture(), p2.getFuture(), p3.getFuture()).then(wsd::bind(&run_or_not_run));
             p1.setValue(TestClass(0xAA));
 
             EXPECT_TRUE(g_has_run);
-            if (!g_has_exception)
-                succeeded = true;
+            if (!g_has_exception) succeeded = true;
         } catch (...) {
             EXPECT_FALSE(g_has_run);
         }
@@ -124,20 +120,19 @@ TEST(when_all, exception_safety)
         g_throw_counter = next_throw_count;
         g_has_run = false;
         try {
-            vector<wsd::Promise<TestClass> > ps;
-            vector<wsd::Future<TestClass> > fs;
+            vector<wsd::Promise<TestClass>> ps;
+            vector<wsd::Future<TestClass>> fs;
             for (int i = 0; i < 3; i++) {
                 ps.push_back(wsd::Promise<TestClass>());
                 fs.push_back(ps.back().getFuture());
             }
-            
+
             wsd::whenAll<TestClass>(fs.begin(), fs.end()).then(wsd::bind(&run_or_not_run_vector));
             ps[0].setValue(TestClass(0xAA));
             ps[1].setValue(TestClass(0xBB));
             ps[2].setValue(TestClass(0xCC));
             EXPECT_TRUE(g_has_run);
-            if (!g_has_exception)
-                succeeded = true;
+            if (!g_has_exception) succeeded = true;
         } catch (...) {
             EXPECT_FALSE(g_has_run);
         }
@@ -150,8 +145,8 @@ TEST(when_all, exception_safety)
         g_throw_counter = next_throw_count;
         g_has_run = false;
         try {
-            vector<wsd::Promise<TestClass> > ps;
-            vector<wsd::Future<TestClass> > fs;
+            vector<wsd::Promise<TestClass>> ps;
+            vector<wsd::Future<TestClass>> fs;
             for (int i = 0; i < 3; i++) {
                 ps.push_back(wsd::Promise<TestClass>());
                 fs.push_back(ps.back().getFuture());
@@ -159,25 +154,24 @@ TEST(when_all, exception_safety)
             ps[0].setValue(TestClass(0xAA));
             ps[1].setValue(TestClass(0xBB));
             ps[2].setValue(TestClass(0xCC));
-            
+
             wsd::whenAll<TestClass>(fs.begin(), fs.end()).then(wsd::bind(&run_or_not_run_vector));
             EXPECT_TRUE(g_has_run);
-            if (!g_has_exception)
-                succeeded = true;
+            if (!g_has_exception) succeeded = true;
         } catch (...) {
             EXPECT_FALSE(g_has_run);
         }
     }
     g_throw_counter = -1;
-    
+
     // some set() before and some after then().
     succeeded = false;
     for (int next_throw_count = 0; !succeeded; next_throw_count++) {
         g_throw_counter = next_throw_count;
         g_has_run = false;
         try {
-            vector<wsd::Promise<TestClass> > ps;
-            vector<wsd::Future<TestClass> > fs;
+            vector<wsd::Promise<TestClass>> ps;
+            vector<wsd::Future<TestClass>> fs;
             for (int i = 0; i < 3; i++) {
                 ps.push_back(wsd::Promise<TestClass>());
                 fs.push_back(ps.back().getFuture());
@@ -188,8 +182,7 @@ TEST(when_all, exception_safety)
             ps[0].setValue(TestClass(0xAA));
             ps[2].setValue(TestClass(0xCC));
             EXPECT_TRUE(g_has_run);
-            if (!g_has_exception)
-                succeeded = true;
+            if (!g_has_exception) succeeded = true;
         } catch (...) {
             EXPECT_FALSE(g_has_run);
         }

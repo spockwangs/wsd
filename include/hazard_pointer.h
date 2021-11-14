@@ -6,14 +6,14 @@
 
 #pragma once
 
-#include <cassert>
-#include <list>
-#include <functional>
-#include <vector>
 #include <atomic>
-#include <memory>
-#include <boost/thread/tss.hpp>
 #include <boost/checked_delete.hpp>
+#include <boost/thread/tss.hpp>
+#include <cassert>
+#include <functional>
+#include <list>
+#include <memory>
+#include <vector>
 
 namespace wsd {
 
@@ -24,15 +24,13 @@ private:
     {
         boost::checked_delete(static_cast<T*>(p));
     }
-    
+
     struct NodeToRetire {
         void* node;
         std::function<void(void*)> deleter;
 
         template <typename T>
-        NodeToRetire(T* p)
-            : node(p),
-              deleter(&DoDelete<T>)
+        NodeToRetire(T* p) : node(p), deleter(&DoDelete<T>)
         {
         }
 
@@ -43,9 +41,7 @@ private:
 
         NodeToRetire(const NodeToRetire&) = delete;
 
-        NodeToRetire(NodeToRetire&& other)
-            : node(other.node),
-              deleter(std::move(other.deleter))
+        NodeToRetire(NodeToRetire&& other) : node(other.node), deleter(std::move(other.deleter))
         {
             other.node = nullptr;
         }
@@ -67,26 +63,26 @@ public:
     HazardManager(int max_hp);
 
     ~HazardManager();
-    
+
     template <typename T>
     void RetireNode(T* node)
     {
         HPRecType* hp_rec = GetHpRecForCurrentThread();
         hp_rec->retire_list.emplace_back(node);
-        if (hp_rec->retire_list.size() >= 2*m_len.load()) {
+        if (hp_rec->retire_list.size() >= 2 * m_len.load()) {
             Scan();
             HelpScan();
         }
     }
 
     int TEST_GetNumberOfHp() const;
-    
+
     bool TEST_HpListContains(void* p) const;
 
     bool TEST_RetireListContains(void* p) const;
 
     int TEST_GetRetireListLenOfCurrentThread() const;
-    
+
 private:
     struct HPRecType {
         std::atomic_flag active = ATOMIC_FLAG_INIT;
@@ -96,10 +92,7 @@ private:
         HPRecType* next = nullptr;
         std::list<NodeToRetire> retire_list;
 
-        HPRecType(int max_hp)
-            : ref_count(1),
-              nodes(new void*[max_hp]),
-              num_of_nodes(max_hp)
+        HPRecType(int max_hp) : ref_count(1), nodes(new void*[max_hp]), num_of_nodes(max_hp)
         {
             for (int i = 0; i < max_hp; ++i) {
                 nodes[i] = nullptr;
@@ -124,13 +117,13 @@ private:
     HPRecType* AllocateHpRec();
 
     HPRecType* GetHpRecForCurrentThread();
-    
+
     static void RetireHpRec(HPRecType* p);
 
     void Scan();
 
     void HelpScan();
-    
+
     const int m_max_hp;
     std::atomic<HPRecType*> m_head{nullptr};
     std::atomic<int> m_len{0};
@@ -152,5 +145,5 @@ public:
 private:
     void** m_hp = nullptr;
 };
-    
+
 }  // namespace wsd

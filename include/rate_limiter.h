@@ -23,13 +23,13 @@ public:
     int64_t AcquireDelay(int permits);
 
     bool TryAcquire(int permits, int64_t timeout_micros);
-    
+
 private:
     // @param timeout_micros maximum time to wait. Negative values means forever.
     int64_t ReserveAndGetWaitLength(int permits, int64_t now_micros, int64_t timeout_micros);
 
     void Resync(int64_t now_micros);
-    
+
     const double m_max_burst_seconds = 0;
     std::mutex m_mutex;
     double m_stable_interval_micros = 0;

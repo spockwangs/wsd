@@ -5,9 +5,11 @@
 //
 
 #include "ebr.h"
+
 #include <atomic>
-#include <utility>
 #include <future>
+#include <utility>
+
 #include "gtest/gtest.h"
 
 namespace {
@@ -27,7 +29,7 @@ public:
             delete q;
         }
     }
-    
+
     void Enqueue(T&& t);
 
     bool Dequeue(T* p);
@@ -77,17 +79,14 @@ bool FifoQueue<T>::Dequeue(T* p)
         h = m_head.load();
         NodeType* t = m_tail.load();
         NodeType* next = h->next.load();
-        if (h != m_head.load())
-            continue;
-        if (next == nullptr)
-            return false;
+        if (h != m_head.load()) continue;
+        if (next == nullptr) return false;
         if (h == t) {
             m_tail.compare_exchange_weak(t, next);
             continue;
         }
         *p = next->data;
-        if (m_head.compare_exchange_weak(h, next))
-            break;
+        if (m_head.compare_exchange_weak(h, next)) break;
     }
     m_ebr.RetireNode(h);
     return true;
