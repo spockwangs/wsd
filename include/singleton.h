@@ -20,52 +20,53 @@
 #ifndef __SINGLETON_H__
 #define __SINGLETON_H__
 
-#include "boost/thread/tss.hpp"
-#include "boost/thread/mutex.hpp"
 #include "boost/shared_ptr.hpp"
 #include "boost/thread/locks.hpp"
+#include "boost/thread/mutex.hpp"
+#include "boost/thread/tss.hpp"
 #include "wsd_magic.h"
 
 namespace wsd {
 
-    template <typename T>
-    class Singleton {
-    public:
-        static boost::shared_ptr<T> getInstance()
-        {
-            if (s_instance.get() == NULL) {
-                {
-                    boost::lock_guard<boost::mutex> lock(s_mutex);
-                    if (!s_ptr)
-                        s_ptr.reset(new T);
-                }
-                s_instance.reset(&s_ptr);
+template <typename T>
+class Singleton {
+public:
+    static boost::shared_ptr<T> getInstance()
+    {
+        if (s_instance.get() == NULL) {
+            {
+                boost::lock_guard<boost::mutex> lock(s_mutex);
+                if (!s_ptr) s_ptr.reset(new T);
             }
-            return *s_instance;
+            s_instance.reset(&s_ptr);
         }
+        return *s_instance;
+    }
 
-    private:
-        DISALLOW_COPY_AND_ASSIGN(Singleton);
-        
-        // Made private to prevent from being inherited.
-        Singleton() {}
-        
-        static boost::mutex s_mutex;
-        static boost::shared_ptr<T> s_ptr;
-        static boost::thread_specific_ptr<boost::shared_ptr<T> > s_instance;
-    };
+private:
+    DISALLOW_COPY_AND_ASSIGN(Singleton);
 
-    template <typename T>
-    boost::mutex Singleton<T>::s_mutex;
+    // Made private to prevent from being inherited.
+    Singleton()
+    {
+    }
 
-    template <typename T>
-    boost::shared_ptr<T> Singleton<T>::s_ptr;
+    static boost::mutex s_mutex;
+    static boost::shared_ptr<T> s_ptr;
+    static boost::thread_specific_ptr<boost::shared_ptr<T>> s_instance;
+};
 
-    // Use thread-local storage to cache the pointer to the singleton object to decrease
-    // contention.  Note that don't delete the thread-local data on thread exit because
-    // the data is statically allocated.
-    template <typename T>
-    boost::thread_specific_ptr<boost::shared_ptr<T> > Singleton<T>::s_instance(NULL);  
+template <typename T>
+boost::mutex Singleton<T>::s_mutex;
+
+template <typename T>
+boost::shared_ptr<T> Singleton<T>::s_ptr;
+
+// Use thread-local storage to cache the pointer to the singleton object to decrease
+// contention.  Note that don't delete the thread-local data on thread exit because
+// the data is statically allocated.
+template <typename T>
+boost::thread_specific_ptr<boost::shared_ptr<T>> Singleton<T>::s_instance(NULL);
 
 }  // namespace wsd
 

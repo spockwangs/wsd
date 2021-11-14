@@ -53,12 +53,11 @@ EbrManager::EbrRecord* EbrManager::AllocateEbrRec()
     do {
         old_head = m_head.load(std::memory_order_relaxed);
         new_rec->next = old_head;
-    } while (!m_head.compare_exchange_weak(old_head, new_rec.get(),
-                                           std::memory_order_release,
+    } while (!m_head.compare_exchange_weak(old_head, new_rec.get(), std::memory_order_release,
                                            std::memory_order_relaxed));
     return new_rec.release();
 }
-                 
+
 EbrManager::EbrRecord* EbrManager::GetEbrRecForCurrentThread()
 {
     if (m_my_ebr_rec.get() == nullptr) {
@@ -84,8 +83,9 @@ void EbrManager::Scan()
 void EbrManager::FreeRetireList(int epoch)
 {
     NodeToRetire* head = m_retire_list[epoch].load(std::memory_order_relaxed);
-    while (!m_retire_list[epoch].compare_exchange_weak(head, nullptr,
-            std::memory_order_release, std::memory_order_relaxed));
+    while (!m_retire_list[epoch].compare_exchange_weak(head, nullptr, std::memory_order_release,
+                                                       std::memory_order_relaxed))
+        ;
     FreeList(head);
 }
 
@@ -96,7 +96,7 @@ void EbrManager::FreeList(NodeToRetire* head)
         p = p->next;
         delete q;
     }
-}    
+}
 
 // static
 void EbrManager::RetireEbrRecord(EbrRecord* p)

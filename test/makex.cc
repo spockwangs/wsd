@@ -4,7 +4,8 @@
 // Author: wbbtiger@gmail.com
 //
 
-class X {};
+class X {
+};
 
 X *makeX()
 {

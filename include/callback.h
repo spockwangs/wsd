@@ -2,6 +2,7 @@
 #define __CALLBACK_H__
 
 #include <memory>
+
 #include "callback_detail.h"
 
 // ---------------------------------------------------------------------------
@@ -78,7 +79,7 @@
 //   cb();
 //
 //   (see below for why I used wsd::unretained() here)
-//   
+//
 //   When calling member functions, bound parameters just go after the object pointer
 //   (indeed the object pointer is the first bound parameter).
 //
@@ -100,12 +101,12 @@
 // When binding parameters of raw pointer type we must specify who, the caller or the
 // callback, should be responsible for the deallocation of the memory the pointer is
 // pointing to.
-// 
+//
 // BINDING PARAMETERS WITH MANUAL LIFETIME MANAGEMENT
 //
 //   void foo(int a, const std::string& s) { }
 //   wsd::Callback<void(void)> cb = wsd::bind(&foo, 1, wsd::unretained("hello"));
-//   cb(); 
+//   cb();
 //
 //   This specifies that the caller owns the memory. And you must make sure the object is
 //   alive at the time callback is run.
@@ -155,449 +156,471 @@
 
 namespace wsd {
 
-    namespace detail {
-        template <typename FunctorType, typename RunType, typename BoundArgsType> class BindState;
-    } // namespace detail
+namespace detail {
+template <typename FunctorType, typename RunType, typename BoundArgsType>
+class BindState;
+}  // namespace detail
 
-    template <typename Signature>
-    class Callback;
+template <typename Signature>
+class Callback;
 
-    template <typename R>
-    class Callback<R(void)> {
-    private:
-        typedef R (*PolymorphicInvoke)(detail::BindStateBase*);
+template <typename R>
+class Callback<R(void)> {
+private:
+    typedef R (*PolymorphicInvoke)(detail::BindStateBase*);
 
-    public:
-        typedef R (RunType)(void);
-        typedef PolymorphicInvoke unspecified_bool_type;
-        
-        Callback()
-            : m_invoke(NULL)
-        { }
-        
-        // Should be private, but avoids template friendship issues.
-        template <typename FunctorType, typename RunType, typename BoundArgsType>
-        Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
-            : m_bind_state_ptr(bind_state),
-              m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
-        {
-        }
+public:
+    typedef R(RunType)(void);
+    typedef PolymorphicInvoke unspecified_bool_type;
 
-        R operator()() const
-        {
-            return m_invoke(m_bind_state_ptr.get());
-        }
+    Callback() : m_invoke(NULL)
+    {
+    }
 
-        operator unspecified_bool_type() const
-        {
-            return m_invoke;
-        }
-        
-    private:
-        std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
-        PolymorphicInvoke m_invoke;
-    };
+    // Should be private, but avoids template friendship issues.
+    template <typename FunctorType, typename RunType, typename BoundArgsType>
+    Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
+        : m_bind_state_ptr(bind_state),
+          m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
+    {
+    }
 
-    template <typename R, typename A1>
-    class Callback<R(A1)> {
-    private:
-        typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
-                                       typename detail::CallbackParamTraits<A1>::ForwardType);
+    R operator()() const
+    {
+        return m_invoke(m_bind_state_ptr.get());
+    }
 
-    public:
-        typedef R (RunType)(A1);
-        typedef PolymorphicInvoke unspecified_bool_type;
-        
-        Callback()
-            : m_invoke(NULL)
-        { }
+    operator unspecified_bool_type() const
+    {
+        return m_invoke;
+    }
 
-        // Should be private, but avoids template friendship issues.
-        template <typename FunctorType, typename RunType, typename BoundArgsType>
-        Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
-            : m_bind_state_ptr(bind_state),
-              m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
-        {
-        }
+private:
+    std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
+    PolymorphicInvoke m_invoke;
+};
 
-        R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1) const
-        {
-            return m_invoke(m_bind_state_ptr.get(), a1);
-        }
+template <typename R, typename A1>
+class Callback<R(A1)> {
+private:
+    typedef R (*PolymorphicInvoke)(detail::BindStateBase*, typename detail::CallbackParamTraits<A1>::ForwardType);
 
-        operator unspecified_bool_type() const
-        {
-            return m_invoke;
-        }
-        
-    private:
-        std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
-        PolymorphicInvoke m_invoke;
-    };
-    
-    template <typename R, typename A1, typename A2>
-    class Callback<R(A1, A2)> {
-    private:
-        typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
-                                       typename detail::CallbackParamTraits<A1>::ForwardType,
-                                       typename detail::CallbackParamTraits<A2>::ForwardType);
-    public:
-        typedef R (RunType)(A1, A2);
-        typedef PolymorphicInvoke unspecified_bool_type;
-        
-        Callback()
-            : m_invoke(NULL)
-        { }
+public:
+    typedef R(RunType)(A1);
+    typedef PolymorphicInvoke unspecified_bool_type;
 
-        // Should be private, but avoids template friendship issues.
-        template <typename FunctorType, typename RunType, typename BoundArgsType>
-        Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
-            : m_bind_state_ptr(bind_state),
-              m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
-        {
-        }
+    Callback() : m_invoke(NULL)
+    {
+    }
 
-        R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                     typename detail::CallbackParamTraits<A2>::ForwardType a2)
-        {
-            return m_invoke(m_bind_state_ptr.get(), a1, a2);
-        }
+    // Should be private, but avoids template friendship issues.
+    template <typename FunctorType, typename RunType, typename BoundArgsType>
+    Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
+        : m_bind_state_ptr(bind_state),
+          m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
+    {
+    }
 
-        operator unspecified_bool_type() const
-        {
-            return m_invoke;
-        }
-        
-    private:
-        std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
-        PolymorphicInvoke m_invoke;
-    };
+    R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1) const
+    {
+        return m_invoke(m_bind_state_ptr.get(), a1);
+    }
 
-    template <typename R, typename A1, typename A2, typename A3>
-    class Callback<R(A1, A2, A3)> {
-    private:
-        typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
-                                       typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                                       typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                                       typename detail::CallbackParamTraits<A3>::ForwardType a3);
-    public:
-        typedef R (RunType)(A1, A2, A3);
-        typedef PolymorphicInvoke unspecified_bool_type;
-        
-        Callback()
-            : m_invoke(NULL)
-        { }
+    operator unspecified_bool_type() const
+    {
+        return m_invoke;
+    }
 
-        // Should be private, but avoids template friendship issues.
-        template <typename FunctorType, typename RunType, typename BoundArgsType>
-        Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
-            : m_bind_state_ptr(bind_state),
-              m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
-        {
-        }
+private:
+    std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
+    PolymorphicInvoke m_invoke;
+};
 
-        R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                     typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                     typename detail::CallbackParamTraits<A3>::ForwardType a3) const
-        {
-            return m_invoke(m_bind_state_ptr.get(), a1, a2, a3);
-        }
+template <typename R, typename A1, typename A2>
+class Callback<R(A1, A2)> {
+private:
+    typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
+                                   typename detail::CallbackParamTraits<A1>::ForwardType,
+                                   typename detail::CallbackParamTraits<A2>::ForwardType);
 
-        operator unspecified_bool_type() const
-        {
-            return m_invoke;
-        }
-        
-    private:
-        std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
-        PolymorphicInvoke m_invoke;
-    };
+public:
+    typedef R(RunType)(A1, A2);
+    typedef PolymorphicInvoke unspecified_bool_type;
 
-    template <typename R, typename A1, typename A2, typename A3, typename A4>
-    class Callback<R(A1, A2, A3, A4)> {
-    private:
-        typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
-                                       typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                                       typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                                       typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                                       typename detail::CallbackParamTraits<A4>::ForwardType a4);
+    Callback() : m_invoke(NULL)
+    {
+    }
 
-    public:
-        typedef R (RunType)(A1, A2, A3, A4);
-        typedef PolymorphicInvoke unspecified_bool_type;
-        
-        Callback()
-            : m_invoke(NULL)
-        { }
+    // Should be private, but avoids template friendship issues.
+    template <typename FunctorType, typename RunType, typename BoundArgsType>
+    Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
+        : m_bind_state_ptr(bind_state),
+          m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
+    {
+    }
 
-        // Should be private, but avoids template friendship issues.
-        template <typename FunctorType, typename RunType, typename BoundArgsType>
-        Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
-            : m_bind_state_ptr(bind_state),
-              m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
-        {
-        }
+    R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                 typename detail::CallbackParamTraits<A2>::ForwardType a2)
+    {
+        return m_invoke(m_bind_state_ptr.get(), a1, a2);
+    }
 
-        R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                     typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                     typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                     typename detail::CallbackParamTraits<A4>::ForwardType a4) const
-        {
-            return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4);
-        }
+    operator unspecified_bool_type() const
+    {
+        return m_invoke;
+    }
 
-        operator unspecified_bool_type() const
-        {
-            return m_invoke;
-        }
-        
-    private:
-        std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
-        PolymorphicInvoke m_invoke;
-    };
+private:
+    std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
+    PolymorphicInvoke m_invoke;
+};
 
-    template <typename R, typename A1, typename A2, typename A3, typename A4, typename A5>
-    class Callback<R(A1, A2, A3, A4, A5)> {
-    private:
-        typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
-                                       typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                                       typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                                       typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                                       typename detail::CallbackParamTraits<A4>::ForwardType a4,
-                                       typename detail::CallbackParamTraits<A5>::ForwardType a5);
-    public:
-        typedef R (RunType)(A1, A2, A3, A4, A5);
-        typedef PolymorphicInvoke unspecified_bool_type;
-        
-        Callback()
-            : m_invoke(NULL)
-        { }
+template <typename R, typename A1, typename A2, typename A3>
+class Callback<R(A1, A2, A3)> {
+private:
+    typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
+                                   typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                                   typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                                   typename detail::CallbackParamTraits<A3>::ForwardType a3);
 
-        // Should be private, but avoids template friendship issues.
-        template <typename FunctorType, typename RunType, typename BoundArgsType>
-        Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
-            : m_bind_state_ptr(bind_state),
-              m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
-        {
-        }
+public:
+    typedef R(RunType)(A1, A2, A3);
+    typedef PolymorphicInvoke unspecified_bool_type;
 
-        R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                     typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                     typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                     typename detail::CallbackParamTraits<A4>::ForwardType a4,
-                     typename detail::CallbackParamTraits<A5>::ForwardType a5) const
-        {
-            return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4, a5);
-        }
+    Callback() : m_invoke(NULL)
+    {
+    }
 
-        operator unspecified_bool_type() const
-        {
-            return m_invoke;
-        }
-        
-    private:
-        std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
-        PolymorphicInvoke m_invoke;
-    };
+    // Should be private, but avoids template friendship issues.
+    template <typename FunctorType, typename RunType, typename BoundArgsType>
+    Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
+        : m_bind_state_ptr(bind_state),
+          m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
+    {
+    }
 
-    template <typename R, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6>
-    class Callback<R(A1, A2, A3, A4, A5, A6)> {
-    private:
-        typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
-                                       typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                                       typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                                       typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                                       typename detail::CallbackParamTraits<A4>::ForwardType a4,
-                                       typename detail::CallbackParamTraits<A5>::ForwardType a5,
-                                       typename detail::CallbackParamTraits<A6>::ForwardType a6);
-    public:
-        typedef R (RunType)(A1, A2, A3, A4, A5, A6);
-        typedef PolymorphicInvoke unspecified_bool_type;
-        
-        Callback()
-            : m_invoke(NULL)
-        { }
+    R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                 typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                 typename detail::CallbackParamTraits<A3>::ForwardType a3) const
+    {
+        return m_invoke(m_bind_state_ptr.get(), a1, a2, a3);
+    }
 
-        // Should be private, but avoids template friendship issues.
-        template <typename FunctorType, typename RunType, typename BoundArgsType>
-        Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
-            : m_bind_state_ptr(bind_state),
-              m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
-        {
-        }
+    operator unspecified_bool_type() const
+    {
+        return m_invoke;
+    }
 
-        R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                     typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                     typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                     typename detail::CallbackParamTraits<A4>::ForwardType a4,
-                     typename detail::CallbackParamTraits<A5>::ForwardType a5,
-                     typename detail::CallbackParamTraits<A6>::ForwardType a6) const
-        {
-            return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4, a5, a6);
-        }
+private:
+    std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
+    PolymorphicInvoke m_invoke;
+};
 
-        operator unspecified_bool_type() const
-        {
-            return m_invoke;
-        }
-        
-    private:
-        std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
-        PolymorphicInvoke m_invoke;
-    };
+template <typename R, typename A1, typename A2, typename A3, typename A4>
+class Callback<R(A1, A2, A3, A4)> {
+private:
+    typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
+                                   typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                                   typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                                   typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                                   typename detail::CallbackParamTraits<A4>::ForwardType a4);
 
-    template <typename R, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7>
-    class Callback<R(A1, A2, A3, A4, A5, A6, A7)> {
-    private:
-        typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
-                                       typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                                       typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                                       typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                                       typename detail::CallbackParamTraits<A4>::ForwardType a4,
-                                       typename detail::CallbackParamTraits<A5>::ForwardType a5,
-                                       typename detail::CallbackParamTraits<A6>::ForwardType a6,
-                                       typename detail::CallbackParamTraits<A7>::ForwardType a7);
-    public:
-        typedef R (RunType)(A1, A2, A3, A4, A5, A6, A7);
-        typedef PolymorphicInvoke unspecified_bool_type;
-        
-        Callback()
-            : m_invoke(NULL)
-        { }
+public:
+    typedef R(RunType)(A1, A2, A3, A4);
+    typedef PolymorphicInvoke unspecified_bool_type;
 
-        // Should be private, but avoids template friendship issues.
-        template <typename FunctorType, typename RunType, typename BoundArgsType>
-        Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
-            : m_bind_state_ptr(bind_state),
-              m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
-        {
-        }
+    Callback() : m_invoke(NULL)
+    {
+    }
 
-        R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                     typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                     typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                     typename detail::CallbackParamTraits<A4>::ForwardType a4,
-                     typename detail::CallbackParamTraits<A5>::ForwardType a5,
-                     typename detail::CallbackParamTraits<A6>::ForwardType a6,
-                     typename detail::CallbackParamTraits<A7>::ForwardType a7) const
-        {
-            return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4, a5, a6, a7);
-        }
+    // Should be private, but avoids template friendship issues.
+    template <typename FunctorType, typename RunType, typename BoundArgsType>
+    Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
+        : m_bind_state_ptr(bind_state),
+          m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
+    {
+    }
 
-        operator unspecified_bool_type() const
-        {
-            return m_invoke;
-        }
-        
-    private:
-        std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
-        PolymorphicInvoke m_invoke;
-    };
+    R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                 typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                 typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                 typename detail::CallbackParamTraits<A4>::ForwardType a4) const
+    {
+        return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4);
+    }
 
-    template <typename R, typename A1, typename A2, typename A3, typename A4, typename A5,
-              typename A6, typename A7, typename A8>
-    class Callback<R(A1, A2, A3, A4, A5, A6, A7, A8)> {
-    private:
-        typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
-                                       typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                                       typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                                       typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                                       typename detail::CallbackParamTraits<A4>::ForwardType a4,
-                                       typename detail::CallbackParamTraits<A5>::ForwardType a5,
-                                       typename detail::CallbackParamTraits<A6>::ForwardType a6,
-                                       typename detail::CallbackParamTraits<A7>::ForwardType a7,
-                                       typename detail::CallbackParamTraits<A8>::ForwardType a8);
-    public:
-        typedef R (RunType)(A1, A2, A3, A4, A5, A6, A7, A8);
-        typedef PolymorphicInvoke unspecified_bool_type;
-        
-        Callback()
-            : m_invoke(NULL)
-        { }
+    operator unspecified_bool_type() const
+    {
+        return m_invoke;
+    }
 
-        // Should be private, but avoids template friendship issues.
-        template <typename FunctorType, typename RunType, typename BoundArgsType>
-        Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
-            : m_bind_state_ptr(bind_state),
-              m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
-        {
-        }
+private:
+    std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
+    PolymorphicInvoke m_invoke;
+};
 
-        R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                     typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                     typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                     typename detail::CallbackParamTraits<A4>::ForwardType a4,
-                     typename detail::CallbackParamTraits<A5>::ForwardType a5,
-                     typename detail::CallbackParamTraits<A6>::ForwardType a6,
-                     typename detail::CallbackParamTraits<A7>::ForwardType a7,
-                     typename detail::CallbackParamTraits<A8>::ForwardType a8) const
-        {
-            return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4, a5, a6, a7, a8);
-        }
+template <typename R, typename A1, typename A2, typename A3, typename A4, typename A5>
+class Callback<R(A1, A2, A3, A4, A5)> {
+private:
+    typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
+                                   typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                                   typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                                   typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                                   typename detail::CallbackParamTraits<A4>::ForwardType a4,
+                                   typename detail::CallbackParamTraits<A5>::ForwardType a5);
 
-        operator unspecified_bool_type() const
-        {
-            return m_invoke;
-        }
-        
-    private:
-        std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
-        PolymorphicInvoke m_invoke;
-    };
+public:
+    typedef R(RunType)(A1, A2, A3, A4, A5);
+    typedef PolymorphicInvoke unspecified_bool_type;
 
-    template <typename R, typename A1, typename A2, typename A3, typename A4, typename A5,
-              typename A6, typename A7, typename A8, typename A9>
-    class Callback<R(A1, A2, A3, A4, A5, A6, A7, A8, A9)> {
-    private:
-        typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
-                                       typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                                       typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                                       typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                                       typename detail::CallbackParamTraits<A4>::ForwardType a4,
-                                       typename detail::CallbackParamTraits<A5>::ForwardType a5,
-                                       typename detail::CallbackParamTraits<A6>::ForwardType a6,
-                                       typename detail::CallbackParamTraits<A7>::ForwardType a7,
-                                       typename detail::CallbackParamTraits<A8>::ForwardType a8,
-                                       typename detail::CallbackParamTraits<A9>::ForwardType a9);
-    public:
-        typedef R (RunType)(A1, A2, A3, A4, A5, A6, A7, A8, A9);
-        typedef PolymorphicInvoke unspecified_bool_type;
-        
-        Callback()
-            : m_invoke(NULL)
-        { }
+    Callback() : m_invoke(NULL)
+    {
+    }
 
-        // Should be private, but avoids template friendship issues.
-        template <typename FunctorType, typename RunType, typename BoundArgsType>
-        Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
-            : m_bind_state_ptr(bind_state),
-              m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
-        {
-        }
+    // Should be private, but avoids template friendship issues.
+    template <typename FunctorType, typename RunType, typename BoundArgsType>
+    Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
+        : m_bind_state_ptr(bind_state),
+          m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
+    {
+    }
 
-        R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
-                     typename detail::CallbackParamTraits<A2>::ForwardType a2,
-                     typename detail::CallbackParamTraits<A3>::ForwardType a3,
-                     typename detail::CallbackParamTraits<A4>::ForwardType a4,
-                     typename detail::CallbackParamTraits<A5>::ForwardType a5,
-                     typename detail::CallbackParamTraits<A6>::ForwardType a6,
-                     typename detail::CallbackParamTraits<A7>::ForwardType a7,
-                     typename detail::CallbackParamTraits<A8>::ForwardType a8,
-                     typename detail::CallbackParamTraits<A9>::ForwardType a9) const
-        {
-            return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4, a5, a6, a7, a8, a9);
-        }
+    R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                 typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                 typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                 typename detail::CallbackParamTraits<A4>::ForwardType a4,
+                 typename detail::CallbackParamTraits<A5>::ForwardType a5) const
+    {
+        return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4, a5);
+    }
 
-        operator unspecified_bool_type() const
-        {
-            return m_invoke;
-        }
-        
-    private:
-        std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
-        PolymorphicInvoke m_invoke;
-    };
+    operator unspecified_bool_type() const
+    {
+        return m_invoke;
+    }
 
-} // namespace wsd
+private:
+    std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
+    PolymorphicInvoke m_invoke;
+};
+
+template <typename R, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6>
+class Callback<R(A1, A2, A3, A4, A5, A6)> {
+private:
+    typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
+                                   typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                                   typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                                   typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                                   typename detail::CallbackParamTraits<A4>::ForwardType a4,
+                                   typename detail::CallbackParamTraits<A5>::ForwardType a5,
+                                   typename detail::CallbackParamTraits<A6>::ForwardType a6);
+
+public:
+    typedef R(RunType)(A1, A2, A3, A4, A5, A6);
+    typedef PolymorphicInvoke unspecified_bool_type;
+
+    Callback() : m_invoke(NULL)
+    {
+    }
+
+    // Should be private, but avoids template friendship issues.
+    template <typename FunctorType, typename RunType, typename BoundArgsType>
+    Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
+        : m_bind_state_ptr(bind_state),
+          m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
+    {
+    }
+
+    R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                 typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                 typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                 typename detail::CallbackParamTraits<A4>::ForwardType a4,
+                 typename detail::CallbackParamTraits<A5>::ForwardType a5,
+                 typename detail::CallbackParamTraits<A6>::ForwardType a6) const
+    {
+        return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4, a5, a6);
+    }
+
+    operator unspecified_bool_type() const
+    {
+        return m_invoke;
+    }
+
+private:
+    std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
+    PolymorphicInvoke m_invoke;
+};
+
+template <typename R, typename A1, typename A2, typename A3, typename A4, typename A5, typename A6, typename A7>
+class Callback<R(A1, A2, A3, A4, A5, A6, A7)> {
+private:
+    typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
+                                   typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                                   typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                                   typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                                   typename detail::CallbackParamTraits<A4>::ForwardType a4,
+                                   typename detail::CallbackParamTraits<A5>::ForwardType a5,
+                                   typename detail::CallbackParamTraits<A6>::ForwardType a6,
+                                   typename detail::CallbackParamTraits<A7>::ForwardType a7);
+
+public:
+    typedef R(RunType)(A1, A2, A3, A4, A5, A6, A7);
+    typedef PolymorphicInvoke unspecified_bool_type;
+
+    Callback() : m_invoke(NULL)
+    {
+    }
+
+    // Should be private, but avoids template friendship issues.
+    template <typename FunctorType, typename RunType, typename BoundArgsType>
+    Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
+        : m_bind_state_ptr(bind_state),
+          m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
+    {
+    }
+
+    R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                 typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                 typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                 typename detail::CallbackParamTraits<A4>::ForwardType a4,
+                 typename detail::CallbackParamTraits<A5>::ForwardType a5,
+                 typename detail::CallbackParamTraits<A6>::ForwardType a6,
+                 typename detail::CallbackParamTraits<A7>::ForwardType a7) const
+    {
+        return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4, a5, a6, a7);
+    }
+
+    operator unspecified_bool_type() const
+    {
+        return m_invoke;
+    }
+
+private:
+    std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
+    PolymorphicInvoke m_invoke;
+};
+
+template <typename R,
+          typename A1,
+          typename A2,
+          typename A3,
+          typename A4,
+          typename A5,
+          typename A6,
+          typename A7,
+          typename A8>
+class Callback<R(A1, A2, A3, A4, A5, A6, A7, A8)> {
+private:
+    typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
+                                   typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                                   typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                                   typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                                   typename detail::CallbackParamTraits<A4>::ForwardType a4,
+                                   typename detail::CallbackParamTraits<A5>::ForwardType a5,
+                                   typename detail::CallbackParamTraits<A6>::ForwardType a6,
+                                   typename detail::CallbackParamTraits<A7>::ForwardType a7,
+                                   typename detail::CallbackParamTraits<A8>::ForwardType a8);
+
+public:
+    typedef R(RunType)(A1, A2, A3, A4, A5, A6, A7, A8);
+    typedef PolymorphicInvoke unspecified_bool_type;
+
+    Callback() : m_invoke(NULL)
+    {
+    }
+
+    // Should be private, but avoids template friendship issues.
+    template <typename FunctorType, typename RunType, typename BoundArgsType>
+    Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
+        : m_bind_state_ptr(bind_state),
+          m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
+    {
+    }
+
+    R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                 typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                 typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                 typename detail::CallbackParamTraits<A4>::ForwardType a4,
+                 typename detail::CallbackParamTraits<A5>::ForwardType a5,
+                 typename detail::CallbackParamTraits<A6>::ForwardType a6,
+                 typename detail::CallbackParamTraits<A7>::ForwardType a7,
+                 typename detail::CallbackParamTraits<A8>::ForwardType a8) const
+    {
+        return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4, a5, a6, a7, a8);
+    }
+
+    operator unspecified_bool_type() const
+    {
+        return m_invoke;
+    }
+
+private:
+    std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
+    PolymorphicInvoke m_invoke;
+};
+
+template <typename R,
+          typename A1,
+          typename A2,
+          typename A3,
+          typename A4,
+          typename A5,
+          typename A6,
+          typename A7,
+          typename A8,
+          typename A9>
+class Callback<R(A1, A2, A3, A4, A5, A6, A7, A8, A9)> {
+private:
+    typedef R (*PolymorphicInvoke)(detail::BindStateBase*,
+                                   typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                                   typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                                   typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                                   typename detail::CallbackParamTraits<A4>::ForwardType a4,
+                                   typename detail::CallbackParamTraits<A5>::ForwardType a5,
+                                   typename detail::CallbackParamTraits<A6>::ForwardType a6,
+                                   typename detail::CallbackParamTraits<A7>::ForwardType a7,
+                                   typename detail::CallbackParamTraits<A8>::ForwardType a8,
+                                   typename detail::CallbackParamTraits<A9>::ForwardType a9);
+
+public:
+    typedef R(RunType)(A1, A2, A3, A4, A5, A6, A7, A8, A9);
+    typedef PolymorphicInvoke unspecified_bool_type;
+
+    Callback() : m_invoke(NULL)
+    {
+    }
+
+    // Should be private, but avoids template friendship issues.
+    template <typename FunctorType, typename RunType, typename BoundArgsType>
+    Callback(detail::BindState<FunctorType, RunType, BoundArgsType>* bind_state)
+        : m_bind_state_ptr(bind_state),
+          m_invoke(&detail::BindState<FunctorType, RunType, BoundArgsType>::InvokerType::invoke)
+    {
+    }
+
+    R operator()(typename detail::CallbackParamTraits<A1>::ForwardType a1,
+                 typename detail::CallbackParamTraits<A2>::ForwardType a2,
+                 typename detail::CallbackParamTraits<A3>::ForwardType a3,
+                 typename detail::CallbackParamTraits<A4>::ForwardType a4,
+                 typename detail::CallbackParamTraits<A5>::ForwardType a5,
+                 typename detail::CallbackParamTraits<A6>::ForwardType a6,
+                 typename detail::CallbackParamTraits<A7>::ForwardType a7,
+                 typename detail::CallbackParamTraits<A8>::ForwardType a8,
+                 typename detail::CallbackParamTraits<A9>::ForwardType a9) const
+    {
+        return m_invoke(m_bind_state_ptr.get(), a1, a2, a3, a4, a5, a6, a7, a8, a9);
+    }
+
+    operator unspecified_bool_type() const
+    {
+        return m_invoke;
+    }
+
+private:
+    std::shared_ptr<detail::BindStateBase> m_bind_state_ptr;
+    PolymorphicInvoke m_invoke;
+};
+
+}  // namespace wsd
 
 #endif

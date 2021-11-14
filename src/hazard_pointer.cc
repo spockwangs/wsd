@@ -5,15 +5,15 @@
 //
 
 #include "hazard_pointer.h"
-#include <unordered_set>
+
 #include <exception>
+#include <unordered_set>
 
 using namespace std;
 
 namespace wsd {
 
-HazardManager::HazardManager(int max_hp)
-    : m_max_hp(max_hp)
+HazardManager::HazardManager(int max_hp) : m_max_hp(max_hp)
 {
 }
 
@@ -88,9 +88,9 @@ HazardManager::HPRecType* HazardManager::AllocateHpRec()
     new_hp->active.test_and_set(std::memory_order_relaxed);
     new_hp->IncRef();
     new_hp->next = m_head.load(std::memory_order_relaxed);
-    while (!m_head.compare_exchange_weak(new_hp->next, new_hp.get(),
-            std::memory_order_release,
-            std::memory_order_relaxed));
+    while (!m_head.compare_exchange_weak(new_hp->next, new_hp.get(), std::memory_order_release,
+                                         std::memory_order_relaxed))
+        ;
     m_len.fetch_add(m_max_hp, std::memory_order_relaxed);
     return new_hp.release();
 }
@@ -145,7 +145,7 @@ void HazardManager::HelpScan()
             continue;
         }
         hp_rec->retire_list.splice(hp_rec->retire_list.end(), p->retire_list);
-        if (hp_rec->retire_list.size() >= 2*m_len.load(std::memory_order_relaxed)) {
+        if (hp_rec->retire_list.size() >= 2 * m_len.load(std::memory_order_relaxed)) {
             Scan();
         }
         p->active.clear(std::memory_order_release);

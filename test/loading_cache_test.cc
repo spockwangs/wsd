@@ -5,9 +5,12 @@
 //
 
 #include "loading_cache.h"
-#include "gtest/gtest.h"
+
 #include <pthread.h>
+
 #include <iostream>
+
+#include "gtest/gtest.h"
 
 using namespace wsd;
 using namespace std;
@@ -42,7 +45,7 @@ TEST(LoadingCache, constructor)
 
 Future<int> regetInt(const int&, const int& old)
 {
-    return makeFuture<int>(old+1);
+    return makeFuture<int>(old + 1);
 }
 
 TEST(LoadingCache, refresh)
@@ -53,7 +56,7 @@ TEST(LoadingCache, refresh)
     cache.get(1);
     sleep(2);
     cache.get(1);
-    //EXPECT_EQ(2, cache.get(1).get());
+    // EXPECT_EQ(2, cache.get(1).get());
 }
 
 Future<int> regetIntException(const int&, const int&)
@@ -97,8 +100,8 @@ TEST(LoadingCache, capacity)
     // one (i.e. 1) should be removed.
     cache.get(3);  // LRU: 3 2
     EXPECT_EQ(2U, cache.size());
-    EXPECT_EQ(3, cache.get(3).get());  // LRU: 3 2
-    EXPECT_EQ(2, cache.get(2).get());  // LRU: 2 3
+    EXPECT_EQ(3, cache.get(3).get());     // LRU: 3 2
+    EXPECT_EQ(2, cache.get(2).get());     // LRU: 2 3
     EXPECT_FALSE(cache.getIfPresent(1));  // 1 has been removed
 
     // Now the LRU lis is: 2 3
@@ -120,7 +123,7 @@ TEST(LoadingCache, capacity)
     EXPECT_FALSE(cache.getIfPresent(2));
     EXPECT_FALSE(cache.getIfPresent(1));
 }
-    
+
 TEST(LoadingCache, refresh_lru)
 {
     LoadingCache<int, int> cache;
@@ -145,7 +148,7 @@ TEST(LoadingCache, expire)
     cache.put(1, 1);
     cache.put(2, 2);
     EXPECT_EQ(2U, cache.size());
-    
+
     // Wait until expiration.
     sleep(1);
     EXPECT_FALSE(cache.getIfPresent(1));
@@ -162,15 +165,15 @@ TEST(LoadingCache, put_capacity)
     cache.put(4, 4);
     cache.put(5, 5);  // 1 was removed
     EXPECT_EQ(4U, cache.size());
-    
+
     EXPECT_FALSE(cache.getIfPresent(1));
     EXPECT_EQ(2, cache.get(2).get());
 }
 
-void* setInt(void *p)
+void* setInt(void* p)
 {
     sleep(1);
-    Promise<int> *promise = reinterpret_cast<Promise<int>*>(p);
+    Promise<int>* promise = reinterpret_cast<Promise<int>*>(p);
     promise->setValue(0xAC);
     delete promise;
     return NULL;
@@ -178,7 +181,7 @@ void* setInt(void *p)
 
 Future<int> delayGetInt(const int&)
 {
-    Promise<int> *p = new Promise<int>();
+    Promise<int>* p = new Promise<int>();
     pthread_t tid;
     int err = pthread_create(&tid, NULL, &setInt, p);
     EXPECT_EQ(0, err);
@@ -190,12 +193,12 @@ TEST(LoadingCache, delay_get_int)
     LoadingCache<int, int> cache;
     cache.setLoader(bind(&delayGetInt));
     cache.refreshAfter(1000);
-    
+
     cache.get(1);
     EXPECT_EQ(0xAC, cache.get(1).get());
 
     sleep(2);  // To force refresh of key 1.
-    EXPECT_EQ(0xAC, cache.get(1).get());    
+    EXPECT_EQ(0xAC, cache.get(1).get());
 }
 
 TEST(LoadingCache, delay_refresh_exception)
@@ -203,7 +206,7 @@ TEST(LoadingCache, delay_refresh_exception)
     LoadingCache<int, int> cache;
     cache.setLoader(bind(&delayGetInt), bind(&regetIntException));
     cache.refreshAfter(1000);
-    
+
     cache.get(1);
     EXPECT_EQ(0xAC, cache.get(1).get());
 

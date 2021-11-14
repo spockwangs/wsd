@@ -2,15 +2,16 @@
 //     All rights reserved.
 //
 // Author: wbbtiger@gmail.com
-// 
+//
 // The Epoch-based reclamation.
 
 #pragma once
 
 #include <atomic>
 #include <functional>
-#include "boost/thread/tss.hpp"
+
 #include "boost/checked_delete.hpp"
+#include "boost/thread/tss.hpp"
 
 namespace wsd {
 
@@ -21,9 +22,9 @@ public:
     // Disallow copy and assignment.
     EbrManager(const EbrManager&) = delete;
     void operator=(const EbrManager&) = delete;
-    
+
     ~EbrManager();
-    
+
     void EnterCriticalRegion();
 
     void ExitCriticalRegion();
@@ -34,9 +35,9 @@ public:
         EbrRecord* p = GetEbrRecForCurrentThread();
         std::unique_ptr<NodeToRetire> node_to_retire(new NodeToRetire(node));
         node_to_retire->next = m_retire_list[p->epoch].load(std::memory_order_relaxed);
-        while (!m_retire_list[p->epoch].compare_exchange_weak(
-                        node_to_retire->next, node_to_retire.get(),
-                        std::memory_order_release, std::memory_order_relaxed));
+        while (!m_retire_list[p->epoch].compare_exchange_weak(node_to_retire->next, node_to_retire.get(),
+                                                              std::memory_order_release, std::memory_order_relaxed))
+            ;
         node_to_retire.release();
         Scan();
     }
@@ -49,10 +50,7 @@ private:
         std::atomic<bool> active{false};
         std::atomic<int> epoch{0};
 
-        EbrRecord()
-            : ref_count(1),
-              active(true),
-              epoch(0)
+        EbrRecord() : ref_count(1), active(true), epoch(0)
         {
         }
 
@@ -83,9 +81,7 @@ private:
         NodeToRetire* next = nullptr;
 
         template <typename T>
-        NodeToRetire(T* p)
-            : node(p),
-              deleter(&DoDelete<T>)
+        NodeToRetire(T* p) : node(p), deleter(&DoDelete<T>)
         {
         }
 
@@ -96,9 +92,7 @@ private:
 
         NodeToRetire(const NodeToRetire&) = delete;
 
-        NodeToRetire(NodeToRetire&& other)
-            : node(other.node),
-              deleter(std::move(other.deleter))
+        NodeToRetire(NodeToRetire&& other) : node(other.node), deleter(std::move(other.deleter))
         {
             other.node = nullptr;
         }
@@ -117,17 +111,17 @@ private:
     };
 
     EbrRecord* AllocateEbrRec();
-    
+
     EbrRecord* GetEbrRecForCurrentThread();
-    
+
     void Scan();
-    
+
     void FreeRetireList(int epoch);
-    
+
     void FreeList(NodeToRetire* head);
-    
+
     static void RetireEbrRecord(EbrRecord* p);
-    
+
     std::atomic<EbrRecord*> m_head{nullptr};
     std::atomic<int> m_global_epoch{0};
     std::atomic<NodeToRetire*> m_retire_list[3]{{nullptr}};
@@ -136,15 +130,14 @@ private:
 
 class EbrGuard final {
 public:
-    EbrGuard(EbrManager& ebr)
-        : m_ebr(ebr)
+    EbrGuard(EbrManager& ebr) : m_ebr(ebr)
     {
         m_ebr.EnterCriticalRegion();
     }
 
     EbrGuard(const EbrGuard&) = delete;
     void operator=(const EbrGuard&) = delete;
-    
+
     ~EbrGuard()
     {
         m_ebr.ExitCriticalRegion();
