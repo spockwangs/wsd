@@ -166,3 +166,19 @@ cc_test(
     ],
     linkstatic = True,
 )
+
+cc_test(
+    name = "combining_tree_test",
+    srcs = [
+        "combining_tree_test.cc",
+    ],
+    deps = [
+        "//:wsd",
+    ],
+    copts = [
+        "-std=c++11",
+        "-Wall",
+        "-Werror",
+    ],
+    linkstatic = True,
+)
