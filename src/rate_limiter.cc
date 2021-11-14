@@ -5,9 +5,10 @@
 //
 
 #include "rate_limiter.h"
+
 #include <cassert>
-#include <cmath>
 #include <chrono>
+#include <cmath>
 #include <thread>
 
 using namespace std;
@@ -16,15 +17,16 @@ namespace {
 
 int64_t GetNowMicros()
 {
-    int64_t now_micros = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()).count();
+    int64_t now_micros =
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+                    .count();
     return now_micros;
 }
 
 bool DoubleEqual(double f1, double f2)
 {
     const double epsilon = 1e-5;
-    if (std::abs(f1-f2) < epsilon) {
+    if (std::abs(f1 - f2) < epsilon) {
         return true;
     }
     return false;
@@ -34,9 +36,7 @@ bool DoubleEqual(double f1, double f2)
 
 namespace wsd {
 
-RateLimiter::RateLimiter(int permits_per_sec,
-                         double max_burst_seconds)
-    : m_max_burst_seconds(max_burst_seconds)
+RateLimiter::RateLimiter(int permits_per_sec, double max_burst_seconds) : m_max_burst_seconds(max_burst_seconds)
 {
     assert(permits_per_sec > 0);
     assert(max_burst_seconds > 0.0);
@@ -85,7 +85,7 @@ bool RateLimiter::TryAcquire(int permits, int64_t timeout_micros)
     if (wait_micros == 0) {
         return true;
     }
-    
+
     assert(wait_micros <= timeout_micros);
     std::this_thread::sleep_for(std::chrono::microseconds(wait_micros));
     return true;
