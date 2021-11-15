@@ -1,12 +1,12 @@
-#include "callback.h"
+#include "wsd/callback.h"
 
 #include <gtest/gtest.h>
 
 #include <sstream>
 #include <string>
 
-#include "bind.h"
-#include "es_test.h"
+#include "wsd/bind.h"
+#include "wsd/es_test.h"
 
 int foo_int(int a)
 {

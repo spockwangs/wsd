@@ -4,7 +4,7 @@
 // Author: wbbtiger@gmail.com
 //
 
-#include "hazard_pointer.h"
+#include "wsd/hazard_pointer.h"
 
 #include <exception>
 #include <unordered_set>

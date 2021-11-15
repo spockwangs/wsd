@@ -12,3 +12,9 @@ http_archive(
     sha256 = "353571c2440176ded91c2de6d6cd88ddd41401d14692ec1f99e35d013feda55a",
     strip_prefix = "googletest-release-1.11.0",
 )
+
+http_archive(
+    name = "gflags",
+    urls = ["https://github.com/gflags/gflags/archive/refs/tags/v2.2.2.zip"],
+    strip_prefix = "gflags-2.2.2",
+)
