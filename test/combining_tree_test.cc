@@ -5,7 +5,7 @@
 //
 
 #include <time.h>
-#include "combining_tree.h"
+#include "wsd/combining_tree.h"
 #include <iostream>
 #include <thread>
 #include <vector>

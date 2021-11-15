@@ -4,8 +4,8 @@
 #include <cstdlib>
 #include <string>
 
-#include "detail/url_canon.h"
-#include "detail/url_parse.h"
+#include "wsd/detail/url_canon.h"
+#include "wsd/detail/url_parse.h"
 
 namespace wsd {
 

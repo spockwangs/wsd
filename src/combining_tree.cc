@@ -4,7 +4,7 @@
 // Author: wbbtiger@gmail.com
 //
 
-#include "combining_tree.h"
+#include "wsd/combining_tree.h"
 #include <utility>
 #include <stack>
 
