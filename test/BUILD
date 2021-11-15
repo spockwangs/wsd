@@ -182,3 +182,18 @@ cc_test(
     ],
     linkstatic = True,
 )
+
+cc_test(
+    name = "benchmark_test",
+    srcs = ["benchmark_test.cc"],
+    deps = [
+        "//:benchmark_main",
+    ],
+    copts = [
+        "-std=c++11",
+        "-Wall",
+        "-Werror",
+    ],
+    linkstatic = True,
+)
+    

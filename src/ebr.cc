@@ -4,7 +4,7 @@
 // Author: wbbtiger@gmail.com
 //
 
-#include "ebr.h"
+#include "wsd/ebr.h"
 
 namespace wsd {
 

@@ -1,6 +1,6 @@
-#include "detail/url_parse.h"
+#include "wsd/detail/url_parse.h"
 
-#include "wsd_assert.h"
+#include "wsd/wsd_assert.h"
 
 namespace wsd {
 

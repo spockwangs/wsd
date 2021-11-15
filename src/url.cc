@@ -1,8 +1,8 @@
-#include "url.h"
+#include "wsd/url.h"
 
 #include <cstring>
 
-#include "wsd_assert.h"
+#include "wsd/wsd_assert.h"
 
 namespace wsd {
 
