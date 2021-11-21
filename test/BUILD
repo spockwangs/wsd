@@ -197,3 +197,18 @@ cc_test(
     linkstatic = True,
 )
     
+cc_test(
+    name = "mkfifo_test",
+    srcs = ["mkfifo_test.cpp"],
+    copts = [
+        "-std=c++11",
+    ],
+)
+        
+cc_binary(
+    name = "local_socket",
+    srcs = ["local_socket.cpp"],
+    copts = [
+        "-std=c++11",
+    ],
+)
