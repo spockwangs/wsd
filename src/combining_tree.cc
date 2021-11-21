@@ -7,11 +7,20 @@
 #include "wsd/combining_tree.h"
 #include <utility>
 #include <stack>
+#include <atomic>
 
 using namespace std;
 
 namespace wsd {
 
+// Returns current thread id starting from 0.
+int ThreadId()
+{
+    static atomic<int> counter(0);
+    thread_local int tid = counter++;
+    return tid;
+}
+           
 class CombiningTree::Node {
 public:
     Node() = default;
@@ -150,8 +159,9 @@ CombiningTree::~CombiningTree()
     }
 }
 
-int CombiningTree::GetAndIncrement(int tid)
+int CombiningTree::GetAndIncrement()
 {
+    int tid = ThreadId();
     stack<Node*> stack;
     Node* my_leaf = m_leaf[tid/2];
     Node* node = my_leaf;

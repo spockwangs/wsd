@@ -21,7 +21,7 @@ public:
 
     ~CombiningTree();
     
-    int GetAndIncrement(int tid);
+    int GetAndIncrement();
 
     int Get();
 
