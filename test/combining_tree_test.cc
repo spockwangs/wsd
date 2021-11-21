@@ -9,6 +9,7 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <mutex>
 
 using namespace std;
 
@@ -19,9 +20,9 @@ int main(int argc, char** argv)
     vector<thread> threads;
     int start_time = time(nullptr);
     for (int i = 0; i < kThreads; ++i) {
-        threads.emplace_back([&, i] {
+        threads.emplace_back([&] {
             for (int j = 0; j < 1000000; ++j) {
-                tree.GetAndIncrement(i);
+                tree.GetAndIncrement();
             }
         });
     }
@@ -32,12 +33,14 @@ int main(int argc, char** argv)
     cout << "latency=" << (end_time - start_time) << endl;
     cout << "count=" << tree.Get() << endl;
 
-    atomic<int> counter(0);
+    mutex mu;
+    int counter = 0;
     threads.clear();
     start_time = time(nullptr);
     for (int i = 0; i < kThreads; ++i) {
         threads.emplace_back([&] {
             for (int j = 0; j < 1000000; ++j) {
+                unique_lock<mutex> lock(mu);
                 ++counter;
             }
         });
