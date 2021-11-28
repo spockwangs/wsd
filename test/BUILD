@@ -197,3 +197,17 @@ cc_test(
     linkstatic = True,
 )
     
+cc_test(
+    name = "bitonic_test",
+    srcs = ["bitonic_test.cpp"],
+    deps = [
+        "@gtest//:gtest_main",
+        "//:wsd",
+    ],
+    copts = [
+        "-std=c++11",
+        "-Wall",
+        "-Werror",
+    ],
+    linkstatic = True,
+)

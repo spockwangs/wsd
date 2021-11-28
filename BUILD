@@ -3,10 +3,12 @@ cc_library(
     srcs = glob(
         include = [
             "src/*.cc",
+            "src/*.cpp",
             "include/wsd/**/*.h",
         ],
         exclude = [
             "src/benchmark*.cc",
+            "src/benchmark*.cpp",
             "include/wsd/detail/benchmark*.h",
         ],
     ),
@@ -59,3 +61,4 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
 )
+
