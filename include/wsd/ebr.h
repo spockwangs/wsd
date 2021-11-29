@@ -9,6 +9,8 @@
 
 #include <atomic>
 #include <functional>
+#include <memory>
+#include <assert.h>
 
 #include "boost/checked_delete.hpp"
 #include "boost/thread/tss.hpp"

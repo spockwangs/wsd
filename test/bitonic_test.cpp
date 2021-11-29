@@ -6,6 +6,7 @@
 
 #include "wsd/bitonic.h"
 
+#include <algorithm>
 #include <gtest/gtest.h>
 
 using namespace std;
