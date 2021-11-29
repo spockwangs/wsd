@@ -6,3 +6,4 @@
 .*.d
 *.a
 test/*_test
+bazel-*
