@@ -16,5 +16,6 @@ http_archive(
 http_archive(
     name = "gflags",
     urls = ["https://github.com/gflags/gflags/archive/refs/tags/v2.2.2.zip"],
+    sha256 = "19713a36c9f32b33df59d1c79b4958434cb005b5b47dc5400a7a4b078111d9b5",
     strip_prefix = "gflags-2.2.2",
 )
