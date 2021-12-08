@@ -6,25 +6,43 @@
 
 #include "wsd/bitonic.h"
 
+#include <map>
+#include <vector>
 #include <algorithm>
+#include <cstdlib>
 #include <gtest/gtest.h>
 
 using namespace std;
 
-void CheckResult(vector<int>& result, int n)
+void CheckResult(const vector<int>& result)
 {
-    EXPECT_EQ(result.size(), n);
-    sort(result.begin(), result.end());
-    for (size_t i = 0; i < result.size(); ++i) {
-        EXPECT_EQ(result[i], i);
+    map<int, int> m;
+    for (auto i : result) {
+        m[i]++;
+    }
+    auto it = m.begin();
+    int n = it->second;
+    ++it;
+    for (; it != m.end(); ++it) {
+        if (n != it->second) {
+            --n;
+            break;
+        }
+    }
+    for (; it != m.end(); ++it) {
+        EXPECT_EQ(it->second, n);
     }
 }
         
 TEST(Bitonic, basic)
 {
-    wsd::Bitonic bitonic(2);
-    vector<int> result;
-    result.push_back(bitonic.Traverse(0));
-    result.push_back(bitonic.Traverse(1));
-    CheckResult(result, 2);
+    for (int i = 1; i < 4; ++i) {
+        int width = (1 << i);
+        wsd::Bitonic bitonic(width);
+        vector<int> result;
+        for (int j = 0; j < 3*width; ++j) {
+            result.push_back(bitonic.Traverse(rand() % width));
+        }
+        CheckResult(result);
+    }
 }
