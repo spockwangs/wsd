@@ -211,3 +211,18 @@ cc_test(
     ],
     linkstatic = True,
 )
+
+cc_test(
+    name = "bitonic_bench",
+    srcs = ["bitonic_bench.cpp"],
+    deps = [
+        "//:wsd",
+        "//:benchmark_main",
+    ],
+    copts = [
+        "-std=c++11",
+        "-Wall",
+        "-Werror",
+    ],
+    linkstatic = True,
+)        
