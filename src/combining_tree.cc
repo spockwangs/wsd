@@ -8,19 +8,12 @@
 #include <utility>
 #include <stack>
 #include <atomic>
+#include "wsd/util.h"
 
 using namespace std;
 
 namespace wsd {
 
-// Returns current thread id starting from 0.
-int ThreadId()
-{
-    static atomic<int> counter(0);
-    thread_local int tid = counter++;
-    return tid;
-}
-           
 class CombiningTree::Node {
 public:
     Node() = default;
