@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <gtest/gtest.h>
 #include <iostream>
+#include <thread>
 
 using namespace std;
 
@@ -46,4 +47,29 @@ TEST(Bitonic, basic)
         }
         CheckResult(result);
     }
+}
+
+TEST(Bitonic, multithread)
+{
+    const int width = (1 << 10);
+    wsd::Bitonic bitonic(width);
+    vector<thread> threads;
+    vector<vector<int>> result_per_thread;
+    result_per_thread.resize(width);
+    for (int i = 0; i < width; ++i) {
+        threads.emplace_back(
+                [&, i] {
+                    for (int j = 0; j < 100; ++j) {
+                        result_per_thread[i].push_back(bitonic.Traverse(i));
+                    }
+                });
+    }
+    for (auto& t : threads) {
+        t.join();
+    }
+    vector<int> result;
+    for (const auto& v : result_per_thread) {
+        result.insert(result.end(), v.begin(), v.end());
+    }
+    CheckResult(result);
 }
