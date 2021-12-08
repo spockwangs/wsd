@@ -69,21 +69,17 @@ public:
                 if ((input % 2) == 0) {
                     output = m_half0->Traverse(input/2);
                 } else {
-                    output = m_half1->Traverse(input/2) + m_width/2;
+                    output = m_half1->Traverse(input/2);
                 }
             } else {
                 if ((input%2) == 0) {
-                    output = m_half1->Traverse(input/2) + m_width/2;
+                    output = m_half1->Traverse(input/2);
                 } else {
                     output = m_half0->Traverse(input / 2);
                 }
             }
         }
-        if (output < m_width/2) {
-            output = m_layer[output].Traverse(0);
-        } else {
-            output = m_layer[output - m_width/2].Traverse(0);
-        }
+        output = m_layer[output].Traverse(0) + output * 2;
         return output;
     }
 
@@ -120,11 +116,10 @@ int Bitonic::Traverse(int input)
     
     int output = 0;
     if (m_width > 2) {
-        int i = input / (m_width / 2);
-        if (i == 0) {
-            output = m_half0->Traverse(input / 2);
+        if (input < m_width/2) {
+            output = m_half0->Traverse(input);
         } else {
-            output = m_half1->Traverse(input / 2);
+            output = m_half1->Traverse(input - m_width / 2);
         }
     }
     return m_merger->Traverse(output + input / (m_width/2) * (m_width/2));
