@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <gtest/gtest.h>
+#include <iostream>
 
 using namespace std;
 
@@ -36,7 +37,7 @@ void CheckResult(const vector<int>& result)
         
 TEST(Bitonic, basic)
 {
-    for (int i = 1; i < 4; ++i) {
+    for (int i = 1; i < 20; ++i) {
         int width = (1 << i);
         wsd::Bitonic bitonic(width);
         vector<int> result;

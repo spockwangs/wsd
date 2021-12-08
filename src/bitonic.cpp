@@ -63,7 +63,7 @@ public:
             throw std::invalid_argument("bad input");
         }
 
-        int output = input;
+        int output = 0;
         if (m_width > 2) {
             if (input < m_width/2) {
                 if ((input % 2) == 0) {
