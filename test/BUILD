@@ -226,3 +226,18 @@ cc_test(
     ],
     linkstatic = True,
 )        
+
+cc_test(
+    name = "hash_map_bench",
+    srcs = ["hash_map_bench.cpp"],
+    deps = [
+        "//:benchmark_main",
+        "@folly//:folly",
+    ],
+    copts = [
+        "-std=c++11",
+        "-Wall",
+        "-Werror",
+    ],
+    linkstatic = True,
+)        
