@@ -235,9 +235,7 @@ cc_test(
         "@folly//:folly",
     ],
     copts = [
-        "-std=c++11",
-        "-Wall",
-        "-Werror",
+        "-std=c++14",
     ],
     linkstatic = True,
 )        

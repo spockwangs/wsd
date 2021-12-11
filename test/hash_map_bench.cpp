@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <string>
 
-#include "folly/ConcurrentHashMap.h"
+#include "folly/concurrency/ConcurrentHashMap.h"
 #include "wsd/benchmark.h"
 
 using namespace std;
@@ -38,4 +38,5 @@ protected:
 TEST_CASE(ConcurrentHashMapBench, insert)
 {
     m_map.insert(RandomStr(), RandomStr());
+    return 0;
 }

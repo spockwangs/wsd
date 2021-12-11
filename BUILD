@@ -17,8 +17,9 @@ cc_library(
         exclude = ["include/wsd/benchmark*.h"]
     ),
     includes = ["include"],
-    deps = [
-        "@boost//:boost",
+    linkopts = [
+        "-lboost_thread-mt",
+        "-lboost_system-mt",
     ],
     copts = [
         "-std=c++11",
