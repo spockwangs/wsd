@@ -1,11 +1,5 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-new_local_repository(
-    name = "boost",
-    path = "/usr/local/",
-    build_file = "boost.BUILD",
-)
-
 http_archive(
     name = "gtest",
     urls = ["https://github.com/google/googletest/archive/refs/tags/release-1.11.0.zip"],
@@ -22,6 +16,13 @@ http_archive(
 
 new_local_repository(
     name = "folly",
-    path = "/tmp/fbcode_builder_getdeps-ZmntZeZworkspaceZfollyZbuildZfbcode_builder/installed/folly/",
+    path = "/private/var/folders/pr/d3c459bx6ys95bv1qfrtr1_m0000gn/T/fbcode_builder_getdeps-ZUsersZspockZworkspaceZfollyZbuildZfbcode_builder/installed/folly",
     build_file = "folly.BUILD",
+)
+
+http_archive(
+    name = "glog",
+    urls = ["https://github.com/google/glog/archive/refs/tags/v0.5.0.zip"],
+    strip_prefix = "glog-0.5.0",
+    repo_mapping = {"@com_github_gflags_gflags" : "@gflags"}
 )
