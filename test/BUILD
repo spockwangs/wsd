@@ -238,6 +238,7 @@ cc_test(
     ],
     linkopts = [
         "-lfolly",
+        "-ltbb",
     ],
     linkstatic = True,
 )        
