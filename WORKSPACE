@@ -16,7 +16,7 @@ http_archive(
 
 new_local_repository(
     name = "folly",
-    path = "/private/var/folders/pr/d3c459bx6ys95bv1qfrtr1_m0000gn/T/fbcode_builder_getdeps-ZUsersZspockZworkspaceZfollyZbuildZfbcode_builder/installed/folly",
+    path = "/private/var/folders/pr/d3c459bx6ys95bv1qfrtr1_m0000gn/T/fbcode_builder_getdeps-ZUsersZspockZDownloadsZfolly-2021.12.06.00ZbuildZfbcode_builder/installed/folly",
     build_file = "folly.BUILD",
 )
 
