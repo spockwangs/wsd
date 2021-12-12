@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 #include <functional>
-#include <unordered_map>
+#include <map>
 #include <memory>
 #include <thread>
 
@@ -118,7 +118,7 @@ private:
     int RunOneTest(const std::string& test_name);
             
     Benchmark m_bench;
-    std::unordered_map<std::string, std::shared_ptr<TestFactory>> m_tests;
+    std::map<std::string, std::shared_ptr<TestFactory>> m_tests;
 };
 
 }  // namespace detail
