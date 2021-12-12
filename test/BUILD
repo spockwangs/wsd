@@ -232,10 +232,12 @@ cc_test(
     srcs = ["hash_map_bench.cpp"],
     deps = [
         "//:benchmark_main",
-        "@folly//:folly",
     ],
     copts = [
         "-std=c++14",
+    ],
+    linkopts = [
+        "-lfolly",
     ],
     linkstatic = True,
 )        
