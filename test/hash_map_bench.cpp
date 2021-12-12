@@ -28,7 +28,7 @@ string RandomStr()
 class ConcurrentHashMapBench : public wsd::benchmark::Test {
 public:
     ConcurrentHashMapBench()
-        : m_map(100000, 1000000)
+        : m_map(100000)
     {}
     
 protected:
@@ -38,5 +38,13 @@ protected:
 TEST_CASE(ConcurrentHashMapBench, insert)
 {
     m_map.insert(RandomStr(), RandomStr());
+    return 0;
+}
+
+TEST_CASE(ConcurrentHashMapBench, insertAndFind)
+{
+    auto key = RandomStr();
+    m_map.insert(key, RandomStr());
+    m_map.find(key);
     return 0;
 }

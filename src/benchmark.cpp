@@ -316,14 +316,15 @@ int BenchmarkManager::RunAllTests()
 {
     try {
         for (const auto& p : m_tests) {
-            cout << "Testing " << p.first << " ..." << endl;
+            cout << "Testing " << p.first << " ... " << flush;
             unique_ptr<Test> test_case_ptr(p.second->CreateTest());
             test_case_ptr->SetUp();
             m_bench.Start(bind(&benchmark::Test::TestBody, test_case_ptr.get()));
             m_bench.WaitForDone();
             test_case_ptr->TearDown();
-            cout << "\nTesting " << p.first << " ... done." << endl;            
+            cout << "done." << endl;            
             m_bench.PrintResult();
+            cout << endl;
         }
     } catch (exception& e) {
         cerr << e.what() << endl;
@@ -335,19 +336,20 @@ int BenchmarkManager::RunAllTests()
 int BenchmarkManager::RunOneTest(const string& test_name)
 {
     try {
-        auto it = m_tests.find(FLAGS_test);
+        auto it = m_tests.find(test_name);
         if (it != m_tests.end()) {
-            cout << "Testing " << it->first << " ..." << endl;
+            cout << "Testing " << it->first << " ... " << flush;
             unique_ptr<benchmark::Test> test_case_ptr(it->second->CreateTest());
             test_case_ptr->SetUp();
             m_bench.Start(bind(&benchmark::Test::TestBody, test_case_ptr.get()));
             m_bench.WaitForDone();
             test_case_ptr->TearDown();
-            cout << "\nTesting " << it->first << " ... done." << endl;
+            cout << "done." << endl;
             m_bench.PrintResult();
+            cout << endl;
             return 0;
         }
-        cerr << "no such test: " << FLAGS_test << endl;
+        cerr << "no such test: " << test_name << endl;
     } catch (exception& e) {
         cerr << e.what() << endl;
         return 1;
