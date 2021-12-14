@@ -13,3 +13,17 @@ http_archive(
     sha256 = "19713a36c9f32b33df59d1c79b4958434cb005b5b47dc5400a7a4b078111d9b5",
     strip_prefix = "gflags-2.2.2",
 )
+
+http_archive(
+    name = "glog",
+    urls = ["https://github.com/google/glog/archive/refs/tags/v0.5.0.zip"],
+    strip_prefix = "glog-0.5.0",
+    repo_mapping = { "@com_github_gflags_gflags" : "@gflags" },
+)
+
+http_archive(
+    name = "google_benchmark",
+    urls = ["https://github.com/google/benchmark/archive/refs/tags/v1.6.0.zip"],
+    sha256 = "3da225763533aa179af8438e994842be5ca72e4a7fed4d7976dc66c8c4502f58",
+    strip_prefix = "benchmark-1.6.0",
+)
