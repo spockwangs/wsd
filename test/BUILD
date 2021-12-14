@@ -259,3 +259,22 @@ cc_test(
     ],
     linkstatic = True,
 )
+
+cc_test(
+    name = "hash_map_benchmark",
+    srcs = ["hash_map_benchmark.cpp"],
+    deps = [
+        "//:wsd",
+        "@google_benchmark//:benchmark_main",
+    ],
+    copts = [
+        "-std=c++14",
+    ],
+    linkopts = [
+        "-L/usr/local/lib",
+        "-lfolly",
+        "-ltbb",
+        "-ldouble-conversion",
+    ],
+    linkstatic = True,
+)
