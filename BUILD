@@ -18,8 +18,9 @@ cc_library(
     ),
     includes = ["include"],
     linkopts = [
-        "-lboost_thread-mt",
-        "-lboost_system-mt",
+        "-L/usr/local/lib",
+        "-lboost_thread",
+        "-lboost_system",
     ],
     copts = [
         "-std=c++11",

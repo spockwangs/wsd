@@ -12,6 +12,7 @@
 #include <map>
 #include <memory>
 #include <thread>
+#include <atomic>
 
 namespace wsd {
 namespace benchmark {
