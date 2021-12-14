@@ -232,13 +232,30 @@ cc_test(
     srcs = ["hash_map_bench.cpp"],
     deps = [
         "//:benchmark_main",
+        "@glog//:glog",
+        "@gflags//:gflags",
     ],
     copts = [
         "-std=c++14",
     ],
     linkopts = [
+        "-L/usr/local/lib",
         "-lfolly",
         "-ltbb",
+        "-ldouble-conversion",
     ],
     linkstatic = True,
 )        
+
+cc_test(
+    name = "bitonic_benchmark",
+    srcs = ["bitonic_benchmark.cpp"],
+    deps = [
+        "//:wsd",
+        "@google_benchmark//:benchmark",
+    ],
+    copts = [
+        "-std=c++11",
+    ],
+    linkstatic = True,
+)
