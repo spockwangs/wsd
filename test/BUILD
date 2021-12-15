@@ -266,6 +266,8 @@ cc_test(
     deps = [
         "//:wsd",
         "@google_benchmark//:benchmark_main",
+        "@google_absl//absl/container:flat_hash_map",
+        "@google_absl//absl/container:node_hash_map",
     ],
     copts = [
         "-std=c++14",
