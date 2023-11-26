@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package ddd;
+
+message Order {
+    optional string id = 1;
+    optional int32 price = 2;
+}
