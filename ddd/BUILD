@@ -9,24 +9,28 @@ proto_library(
 cc_proto_library(
     name = "order_cc_proto",
     deps = [":order_proto"],
-    deps = [":order_proto"]
 )
 
 cc_library(
     name = "repository",
     srcs = [
         "repository.h",
-        "repository_impl.cpp",
         "repository_impl.h",
-    ],
-    copts = [
-        "-std=c++14",
-        "repository_impl.h",
-        "repository_impl.cpp",
     ],
     deps = [
         ":order_cc_proto",
-        "@google_absl//absl/status",
+        "@google_absl//absl/status:status",
+        "@google_absl//absl/status:statusor",
+    ],
+    copts = [
+        "-std=c++14",
+    ],
+)
+
+cc_library(
+    name = "entity",
+    srcs = [
+        "entity.h",
     ],
     copts = [
         "-std=c++14",
@@ -35,10 +39,13 @@ cc_library(
 
 cc_test(
     name = "repository_test",
-    srcs = ["repository_test.cpp"],
+    srcs = [
+        "repository_test.cpp",
+    ],
     deps = [
         "@gtest//:gtest_main",
         ":repository",
+        ":entity",
     ],
     copts = [
         "-std=c++14",
@@ -46,8 +53,4 @@ cc_test(
         "-Werror",
     ],
     linkstatic = True,
-    deps = [
-        ":repository",
-        "@gtest//:gtest_main",
-    ],
 )

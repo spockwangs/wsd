@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package ddd;
+package ddd_po;
 
 message Order {
     optional string id = 1;
