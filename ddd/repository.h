@@ -4,6 +4,7 @@
 #include <type_traits>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 
 namespace ddd {
 
@@ -13,6 +14,7 @@ public:
 
     virtual ~Entity() = default;
 
+    // Entity should not be copied. We should not have two copies of the same entity in one session.
     Entity(const Entity&) = delete;
     void operator=(const Entity&) = delete;
 
@@ -26,11 +28,12 @@ public:
 
     virtual ~Repository() = default;
 
-    virtual absl::Status Find(const std::string& id, T** entity_pp) = 0;
+    // The returned entity is actually borrowed from the repository, so we return a pointer.
+    virtual absl::StatusOr<T*> Find(const std::string& id) = 0;
 
-    virtual absl::Status Remove(T&& entity) = 0;
+    virtual absl::Status Remove(const std::string& id) = 0;
 
-    virtual absl::Status Save(T&& entity) = 0;
+    virtual absl::Status Save(const T& entity) = 0;
 };
 
 }  // namespace ddd

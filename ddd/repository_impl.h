@@ -37,33 +37,30 @@ public:
 
     ~RepositoryImpl() override = default;
 
-    absl::Status Find(const std::string& id, Entity** entity_pp) override
+    absl::StatusOr<Entity*> Find(const std::string& id) override
     {
         auto it = id_map_.find(id);
         if (it != id_map_.end()) {
-            *entity_pp = it->second.entity_ptr.get();
-            return absl::OkStatus();
+            return it->second.entity_ptr.get();
         }
 
         std::string cas_token;
         auto status_or_entity_ptr = dao_.Get(id, &cas_token);
         if (!status_or_entity_ptr.ok()) {
-            *entity_pp = nullptr;
-            return status_or_entity_ptr.status();
+          return status_or_entity_ptr.status();
         }
         it = id_map_.emplace(id, EntityState{.entity_ptr = std::move(*status_or_entity_ptr), .cas_token = cas_token})
                      .first;
-        *entity_pp = it->second.entity_ptr.get();
-        return absl::OkStatus();
+        return it->second.entity_ptr.get();
     }
 
-    absl::Status Remove(Entity&& entity) override
+    absl::Status Remove(const std::string& id) override
     {
-        id_map_.erase(entity.GetId());
-        return dao_.Del(entity.GetId());
+        id_map_.erase(id);
+        return dao_.Del(id);
     }
 
-    absl::Status Save(Entity&& entity) override
+    absl::Status Save(const Entity& entity) override
     {
         std::string cas_token;
         auto it = id_map_.find(entity.GetId());

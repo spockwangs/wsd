@@ -121,54 +121,76 @@ TEST_F(RepositoryTest, SaveAndFind)
     ddd::RepositoryImpl<ddd::Order> repo{dao_};
 
     // Finding an non-existent entity will return nullptr.
-    ddd::Order* order = nullptr;
-    auto s = repo.Find("a", &order);
-    EXPECT_TRUE(absl::IsNotFound(s));
-    EXPECT_EQ(order, nullptr);
+    absl::StatusOr<ddd::Order*> status_or_order = repo.Find("a");
+    EXPECT_TRUE(absl::IsNotFound(status_or_order.status()));
 
     // Add an enity.
     ddd::Order newOrder{"a", 1};
-    s = repo.Save(std::move(newOrder));
+    auto s = repo.Save(newOrder);
     EXPECT_TRUE(s.ok()) << s.ToString();
 
     // ... and we will find it.
-    ddd::Order* order_p = nullptr;
-    s = repo.Find("a", &order_p);
-    EXPECT_TRUE(s.ok()) << s.ToString();
-    EXPECT_TRUE(order_p != nullptr);
-    EXPECT_EQ(order_p->GetId(), "a");
-    EXPECT_EQ(order_p->GetPrice(), 1);
-    order_p->SetPrice(2);
+    status_or_order = repo.Find("a");
+    EXPECT_TRUE(status_or_order.ok());
+    auto order_p1 = status_or_order.value();
+    EXPECT_TRUE(order_p1 != nullptr);
+    EXPECT_EQ(order_p1->GetId(), "a");
+    EXPECT_EQ(order_p1->GetPrice(), 1);
+    order_p1->SetPrice(2);
 
     // If we find it again, it will return the same object.
-    ddd::Order* order_p2 = nullptr;
-    s = repo.Find("a", &order_p2);
-    EXPECT_TRUE(s.ok());
-    EXPECT_EQ(order_p2, order_p);
+    status_or_order = repo.Find("a");
+    EXPECT_TRUE(status_or_order.ok());
+    auto order_p2 = status_or_order.value();
+    EXPECT_EQ(order_p2, order_p1);
     EXPECT_EQ(order_p2->GetPrice(), 2);
 }
 
-TEST_F(RepositoryTest, MultiSession)
+TEST_F(RepositoryTest, MultiSessionConflicts)
 {
     ddd::RepositoryImpl<ddd::Order> repo1{dao_}, repo2{dao_};
 
     // Session 1: find an entity.
-    ddd::Order* order1 = nullptr;
-    auto s = repo1.Find("a", &order1);
-    EXPECT_EQ(order1, nullptr);
+    absl::StatusOr<ddd::Order*> status_or_order = repo1.Find("a");
+    EXPECT_TRUE(absl::IsNotFound(status_or_order.status()));
 
     // Session 2: find the same entity.
-    ddd::Order* order2 = nullptr;
-    s = repo2.Find("a", &order2);
-    EXPECT_EQ(order2, nullptr);
+    status_or_order = repo2.Find("a");
+    EXPECT_TRUE(absl::IsNotFound(status_or_order.status()));
 
     // Session 1: add and save an entity.
     ddd::Order newOrder{"a", 1};
-    s = repo1.Save(std::move(newOrder));
+    auto s = repo1.Save(newOrder);
     EXPECT_TRUE(s.ok());
 
     // Session 2: save the same entity, and we will get conflicts.
     ddd::Order newOrder2{"a", 2};
-    s = repo2.Save(std::move(newOrder2));
+    s = repo2.Save(newOrder2);
     EXPECT_TRUE(absl::IsAborted(s)) << s.ToString();
+}
+
+TEST_F(RepositoryTest, MultiSessionConflicts2)
+{
+    ddd::RepositoryImpl<ddd::Order> repo1{dao_}, repo2{dao_};
+    EXPECT_TRUE(repo1.Save(ddd::Order{"a", 1}).ok());
+
+    // Session 1: find an entity.
+    absl::StatusOr<ddd::Order*> status_or_order = repo1.Find("a");
+    EXPECT_TRUE(status_or_order.ok());
+    ddd::Order* order1 = status_or_order.value();
+
+    // Session 2: find the same entity.
+    status_or_order = repo2.Find("a");
+    EXPECT_TRUE(status_or_order.ok());
+    ddd::Order* order2 = status_or_order.value();
+    EXPECT_EQ(order1->GetPrice(), order2->GetPrice());
+
+    // Session 2: remove the entity.
+    auto s = repo2.Remove(order2->GetId());
+    EXPECT_TRUE(s.ok());
+
+    // Session 1: modify and save the entity.
+    order1->SetPrice(2);
+    s = repo1.Save(*order1);
+    EXPECT_TRUE(absl::IsAborted(s));
 }
