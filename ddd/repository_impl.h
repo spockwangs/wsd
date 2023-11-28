@@ -42,7 +42,6 @@ public:
     OrderDao() = default;
 
     ~OrderDao() = default;
-
     absl::Status Get(const std::string& id, Order* order, std::string* cas_token);
 
     absl::Status CasPut(const Order& order, const std::string& cas_token);
@@ -63,6 +62,10 @@ public:
     OrderRepository() = default;
 
     Order* Find(const std::string& id) override;
+
+    void Remove(const Order& order) override;
+
+    bool Save(const Order& order) override;
 
     void Remove(const Order& order) override;
 
