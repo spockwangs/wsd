@@ -12,28 +12,34 @@ cc_proto_library(
 )
 
 cc_library(
-    name = "repository",
-    srcs = [
+    name = "domain",
+    hdrs = [
         "repository.h",
-        "repository_impl.h",
+        "order.h",
+        "entity.h",
+    ],
+    srcs = [
     ],
     deps = [
-        ":order_cc_proto",
         "@google_absl//absl/status:status",
         "@google_absl//absl/status:statusor",
-    ],
-    copts = [
-        "-std=c++14",
     ],
 )
 
 cc_library(
-    name = "entity",
-    srcs = [
-        "entity.h",
+    name = "infra",
+    hdrs = [
+        "order_dao_kv_impl.h",
+        "persistence_repository_impl.h",
     ],
-    copts = [
-        "-std=c++14",
+    srcs = [
+        "order_dao_kv_impl.cpp",
+    ],
+    deps = [
+        ":domain",
+        ":order_cc_proto",
+        "@google_absl//absl/status:status",
+        "@google_absl//absl/status:statusor",
     ],
 )
 
@@ -44,13 +50,7 @@ cc_test(
     ],
     deps = [
         "@gtest//:gtest_main",
-        ":repository",
-        ":entity",
-    ],
-    copts = [
-        "-std=c++14",
-        "-Wall",
-        "-Werror",
+        ":infra",
     ],
     linkstatic = True,
 )

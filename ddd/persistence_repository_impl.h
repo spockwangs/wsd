@@ -15,6 +15,7 @@
 #include "repository.h"
 
 namespace ddd {
+namespace infra {
 
 template <typename Entity>
 class Dao {
@@ -29,15 +30,15 @@ public:
 };
 
 template <typename T>
-class RepositoryImpl : public Repository<T> {
+class PersistenceRepositoryImpl : public domain::PersistenceRepository<T> {
 public:
-    RepositoryImpl(Dao<T>& dao) : dao_(dao)
+    PersistenceRepositoryImpl(Dao<T>& dao) : dao_(dao)
     {
     }
 
-    ~RepositoryImpl() override = default;
+    ~PersistenceRepositoryImpl() override = default;
 
-  absl::StatusOr<typename Repository<T>::EntityPtr> Find(const std::string& id) override
+    absl::StatusOr<typename domain::PersistenceRepository<T>::EntityPtr> Find(const std::string& id) override
     {
         auto it = id_map_.find(id);
         if (it != id_map_.end()) {
@@ -84,4 +85,5 @@ private:
     Dao<T>& dao_;
 };
 
+}  // namespace infra
 }  // namespace ddd

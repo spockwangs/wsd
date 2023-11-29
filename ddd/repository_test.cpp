@@ -6,112 +6,9 @@
 
 #include <gtest/gtest.h>
 
-#include <mutex>
-#include <unordered_map>
-
-#include "ddd/order.pb.h"
-#include "entity.h"
-#include "repository_impl.h"
-
-class OrderDao : public ddd::Dao<ddd::Order> {
-public:
-    OrderDao() = default;
-
-    ~OrderDao() override = default;
-
-    absl::Status Get(const std::string& id, std::shared_ptr<ddd::Order>* order_ptr, std::string* cas_token) override;
-
-    absl::Status CasPut(const ddd::Order& order, const std::string& cas_token) override;
-
-    absl::Status Del(const std::string& id) override;
-
-    void Reset();
-
-private:
-    static absl::Status FromOrderPO(const std::string& s, std::shared_ptr<ddd::Order>* order_ptr);
-
-    static std::string ToOrderPO(const ddd::Order& order);
-
-    std::mutex mu_;
-    std::unordered_map<std::string, std::pair<std::string, int>> kv_;
-};
-
-absl::Status OrderDao::Get(const std::string& id, std::shared_ptr<ddd::Order>* order_ptr, std::string* cas_token)
-{
-    std::unique_lock<std::mutex> l{mu_};
-    auto it = kv_.find(id);
-    if (it == kv_.end()) {
-        return absl::NotFoundError("");
-    }
-
-    *cas_token = std::to_string(it->second.second);
-    return FromOrderPO(it->second.first, order_ptr);
-}
-
-absl::Status OrderDao::CasPut(const ddd::Order& order, const std::string& cas_token)
-{
-    int version = 0;
-    if (!cas_token.empty() && !absl::SimpleAtoi(cas_token, &version)) {
-        return absl::InvalidArgumentError("invalid cas_token");
-    }
-
-    int exp_version = 0;
-    std::unique_lock<std::mutex> l{mu_};
-    auto it = kv_.find(order.GetId());
-    if (it == kv_.end()) {
-        exp_version = 0;
-    } else {
-        exp_version = it->second.second;
-    }
-    if (version != exp_version) {
-        return absl::AbortedError("");
-    }
-    kv_[order.GetId()] = std::make_pair(ToOrderPO(order), ++version);
-    return absl::OkStatus();
-}
-
-absl::Status OrderDao::Del(const std::string& id)
-{
-    std::unique_lock<std::mutex> l{mu_};
-    kv_.erase(id);
-    return absl::OkStatus();
-}
-
-void OrderDao::Reset()
-{
-    kv_.clear();
-}
-
-absl::Status OrderDao::FromOrderPO(const std::string& s, std::shared_ptr<ddd::Order>* order_ptr)
-{
-    ddd_po::Order order_po;
-    if (!order_po.ParseFromString(s)) {
-        return absl::DataLossError("ParseFromString() failed");
-    }
-
-    std::vector<ddd::LineItem> line_items;
-    for (const auto& item : order_po.line_item()) {
-        line_items.emplace_back(item.id(), item.name(), item.price());
-    }
-    *order_ptr = std::make_shared<ddd::Order>(ddd::Order::MakeOrder(order_po.id(), std::move(line_items)));
-    return absl::OkStatus();
-}
-
-std::string OrderDao::ToOrderPO(const ddd::Order& order)
-{
-    ddd_po::Order order_po;
-    order_po.set_id(order.GetId());
-    order_po.set_total_price(order.GetTotalPrice());
-    for (const auto& item : order.GetLineItems()) {
-        auto* p = order_po.add_line_item();
-        p->set_id(item.GetId());
-        p->set_name(item.GetName());
-        p->set_price(item.GetPrice());
-    }
-    std::string result;
-    order_po.SerializeToString(&result);
-    return result;
-}
+#include "persistence_repository_impl.h"
+#include "order_dao_kv_impl.h"
+#include "repository.h"
 
 class RepositoryTest : public testing::Test {
 public:
@@ -125,19 +22,25 @@ public:
     }
 
 protected:
-    OrderDao dao_;
+    std::unique_ptr<ddd::domain::PersistenceRepository<ddd::domain::Order>> MakeRepository()
+    {
+        return std::make_unique<ddd::infra::PersistenceRepositoryImpl<ddd::domain::Order>>(dao_);
+    }
+
+    ddd::infra::OrderDaoKvImpl dao_;
 };
 
 TEST_F(RepositoryTest, SaveAndFind)
 {
-    ddd::RepositoryImpl<ddd::Order> repo{dao_};
+    auto repo_ptr = MakeRepository();
+    auto& repo = *repo_ptr;
 
     // Finding an non-existent entity will return nullptr.
     auto status_or_order_ptr = repo.Find("a");
     EXPECT_TRUE(absl::IsNotFound(status_or_order_ptr.status()));
 
     // Add an enity.
-    ddd::Order newOrder{"a"};
+    ddd::domain::Order newOrder{"a"};
     auto s = repo.Save(newOrder);
     EXPECT_TRUE(s.ok()) << s.ToString();
 
@@ -159,7 +62,10 @@ TEST_F(RepositoryTest, SaveAndFind)
 
 TEST_F(RepositoryTest, MultiSessionConflicts)
 {
-    ddd::RepositoryImpl<ddd::Order> repo1{dao_}, repo2{dao_};
+    auto repo_ptr_1 = MakeRepository();
+    auto repo_ptr_2 = MakeRepository();
+    auto& repo1 = *repo_ptr_1;
+    auto& repo2 = *repo_ptr_2;
 
     // Session 1: find an entity.
     auto status_or_order_ptr = repo1.Find("a");
@@ -170,20 +76,24 @@ TEST_F(RepositoryTest, MultiSessionConflicts)
     EXPECT_TRUE(absl::IsNotFound(status_or_order_ptr.status()));
 
     // Session 1: add and save an entity.
-    ddd::Order newOrder{"a"};
+    ddd::domain::Order newOrder{"a"};
     auto s = repo1.Save(newOrder);
     EXPECT_TRUE(s.ok());
 
     // Session 2: save the same entity, and we will get conflicts.
-    ddd::Order newOrder2{"a"};
+    ddd::domain::Order newOrder2{"a"};
     s = repo2.Save(newOrder2);
     EXPECT_TRUE(absl::IsAborted(s)) << s.ToString();
 }
 
 TEST_F(RepositoryTest, MultiSessionConflicts2)
 {
-    ddd::RepositoryImpl<ddd::Order> repo1{dao_}, repo2{dao_};
-    EXPECT_TRUE(repo1.Save(ddd::Order{"a"}).ok());
+    auto repo_ptr_1 = MakeRepository();
+    auto repo_ptr_2 = MakeRepository();
+    auto& repo1 = *repo_ptr_1;
+    auto& repo2 = *repo_ptr_2;
+
+    EXPECT_TRUE(repo1.Save(ddd::domain::Order{"a"}).ok());
 
     // Session 1: find an entity.
     auto status_or_order_ptr = repo1.Find("a");
