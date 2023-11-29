@@ -19,11 +19,11 @@ public:
 
     ~OrderDao() override = default;
 
-    absl::Status Get(const std::string& id, std::shared_ptr<ddd::Order>* order_ptr, std::string* cas_token);
+    absl::Status Get(const std::string& id, std::shared_ptr<ddd::Order>* order_ptr, std::string* cas_token) override;
 
-    absl::Status CasPut(const ddd::Order& order, const std::string& cas_token);
+    absl::Status CasPut(const ddd::Order& order, const std::string& cas_token) override;
 
-    absl::Status Del(const std::string& id);
+    absl::Status Del(const std::string& id) override;
 
     void Reset();
 
