@@ -19,7 +19,7 @@ public:
 
     ~OrderDao() override = default;
 
-    absl::StatusOr<std::unique_ptr<ddd::Order>> Get(const std::string& id, std::string* cas_token);
+  absl::Status Get(const std::string& id, std::shared_ptr<ddd::Order>* order_ptr, std::string* cas_token);
 
     absl::Status CasPut(const ddd::Order& order, const std::string& cas_token);
 
@@ -28,7 +28,7 @@ public:
     void Reset();
 
 private:
-    static absl::StatusOr<std::unique_ptr<ddd::Order>> FromOrderPO(const std::string& s);
+  static absl::Status FromOrderPO(const std::string& s, std::shared_ptr<ddd::Order>* order_ptr);
 
     static std::string ToOrderPO(const ddd::Order& order);
 
@@ -36,7 +36,7 @@ private:
     std::unordered_map<std::string, std::pair<std::string, int>> kv_;
 };
 
-absl::StatusOr<std::unique_ptr<ddd::Order>> OrderDao::Get(const std::string& id, std::string* cas_token)
+absl::Status OrderDao::Get(const std::string& id, std::shared_ptr<ddd::Order>* order_ptr, std::string* cas_token)
 {
     std::unique_lock<std::mutex> l{mu_};
     auto it = kv_.find(id);
@@ -45,7 +45,7 @@ absl::StatusOr<std::unique_ptr<ddd::Order>> OrderDao::Get(const std::string& id,
     }
 
     *cas_token = std::to_string(it->second.second);
-    return FromOrderPO(it->second.first);
+    return FromOrderPO(it->second.first, order_ptr);
 }
 
 absl::Status OrderDao::CasPut(const ddd::Order& order, const std::string& cas_token)
@@ -82,13 +82,14 @@ void OrderDao::Reset()
     kv_.clear();
 }
 
-absl::StatusOr<std::unique_ptr<ddd::Order>> OrderDao::FromOrderPO(const std::string& s)
+absl::Status OrderDao::FromOrderPO(const std::string& s, std::shared_ptr<ddd::Order>* order_ptr)
 {
     ddd_po::Order order_po;
     if (!order_po.ParseFromString(s)) {
         return absl::DataLossError("ParseFromString() failed");
     }
-    return std::make_unique<ddd::Order>(order_po.id(), order_po.price());
+  *order_ptr = std::make_shared<ddd::Order>(order_po.id(), order_po.price());
+  return absl::OkStatus();
 }
 
 std::string OrderDao::ToOrderPO(const ddd::Order& order)
@@ -121,8 +122,8 @@ TEST_F(RepositoryTest, SaveAndFind)
     ddd::RepositoryImpl<ddd::Order> repo{dao_};
 
     // Finding an non-existent entity will return nullptr.
-    absl::StatusOr<ddd::Order*> status_or_order = repo.Find("a");
-    EXPECT_TRUE(absl::IsNotFound(status_or_order.status()));
+    auto status_or_order_ptr = repo.Find("a");
+    EXPECT_TRUE(absl::IsNotFound(status_or_order_ptr.status()));
 
     // Add an enity.
     ddd::Order newOrder{"a", 1};
@@ -130,20 +131,20 @@ TEST_F(RepositoryTest, SaveAndFind)
     EXPECT_TRUE(s.ok()) << s.ToString();
 
     // ... and we will find it.
-    status_or_order = repo.Find("a");
-    EXPECT_TRUE(status_or_order.ok());
-    auto order_p1 = status_or_order.value();
-    EXPECT_TRUE(order_p1 != nullptr);
-    EXPECT_EQ(order_p1->GetId(), "a");
-    EXPECT_EQ(order_p1->GetPrice(), 1);
-    order_p1->SetPrice(2);
+    status_or_order_ptr = repo.Find("a");
+    EXPECT_TRUE(status_or_order_ptr.ok());
+    auto order_p1 = status_or_order_ptr.value();
+    EXPECT_FALSE(order_p1.expired());
+    EXPECT_EQ(order_p1.lock()->GetId(), "a");
+    EXPECT_EQ(order_p1.lock()->GetPrice(), 1);
+    order_p1.lock()->SetPrice(2);
 
     // If we find it again, it will return the same object.
-    status_or_order = repo.Find("a");
-    EXPECT_TRUE(status_or_order.ok());
-    auto order_p2 = status_or_order.value();
-    EXPECT_EQ(order_p2, order_p1);
-    EXPECT_EQ(order_p2->GetPrice(), 2);
+    status_or_order_ptr = repo.Find("a");
+    EXPECT_TRUE(status_or_order_ptr.ok());
+    auto order_p2 = status_or_order_ptr.value();
+    EXPECT_EQ(order_p2.lock(), order_p1.lock());
+    EXPECT_EQ(order_p2.lock()->GetPrice(), 2);
 }
 
 TEST_F(RepositoryTest, MultiSessionConflicts)
@@ -151,12 +152,12 @@ TEST_F(RepositoryTest, MultiSessionConflicts)
     ddd::RepositoryImpl<ddd::Order> repo1{dao_}, repo2{dao_};
 
     // Session 1: find an entity.
-    absl::StatusOr<ddd::Order*> status_or_order = repo1.Find("a");
-    EXPECT_TRUE(absl::IsNotFound(status_or_order.status()));
+    auto status_or_order_ptr = repo1.Find("a");
+    EXPECT_TRUE(absl::IsNotFound(status_or_order_ptr.status()));
 
     // Session 2: find the same entity.
-    status_or_order = repo2.Find("a");
-    EXPECT_TRUE(absl::IsNotFound(status_or_order.status()));
+    status_or_order_ptr = repo2.Find("a");
+    EXPECT_TRUE(absl::IsNotFound(status_or_order_ptr.status()));
 
     // Session 1: add and save an entity.
     ddd::Order newOrder{"a", 1};
@@ -175,22 +176,24 @@ TEST_F(RepositoryTest, MultiSessionConflicts2)
     EXPECT_TRUE(repo1.Save(ddd::Order{"a", 1}).ok());
 
     // Session 1: find an entity.
-    absl::StatusOr<ddd::Order*> status_or_order = repo1.Find("a");
-    EXPECT_TRUE(status_or_order.ok());
-    ddd::Order* order1 = status_or_order.value();
+    auto status_or_order_ptr = repo1.Find("a");
+    EXPECT_TRUE(status_or_order_ptr.ok());
+    auto order1 = status_or_order_ptr.value();
 
     // Session 2: find the same entity.
-    status_or_order = repo2.Find("a");
-    EXPECT_TRUE(status_or_order.ok());
-    ddd::Order* order2 = status_or_order.value();
-    EXPECT_EQ(order1->GetPrice(), order2->GetPrice());
+    status_or_order_ptr = repo2.Find("a");
+    EXPECT_TRUE(status_or_order_ptr.ok());
+    auto order2 = status_or_order_ptr.value();
+    EXPECT_EQ(order1.lock()->GetPrice(), order2.lock()->GetPrice());
 
     // Session 2: remove the entity.
-    auto s = repo2.Remove(order2->GetId());
+    auto s = repo2.Remove(order2.lock()->GetId());
     EXPECT_TRUE(s.ok());
+    EXPECT_TRUE(order2.expired());
 
     // Session 1: modify and save the entity.
-    order1->SetPrice(2);
-    s = repo1.Save(*order1);
+    order1.lock()->SetPrice(2);
+    s = repo1.Save(*order1.lock());
     EXPECT_TRUE(absl::IsAborted(s));
+    EXPECT_TRUE(order1.expired());
 }

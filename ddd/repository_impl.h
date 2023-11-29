@@ -21,37 +21,37 @@ class Dao {
 public:
     virtual ~Dao() = default;
 
-    virtual absl::StatusOr<std::unique_ptr<Entity>> Get(const std::string& id, std::string* cas_token) = 0;
+    virtual absl::Status Get(const std::string& id, std::shared_ptr<Entity>* entity, std::string* cas_token) = 0;
 
     virtual absl::Status CasPut(const Entity& order, const std::string& cas_token) = 0;
 
     virtual absl::Status Del(const std::string& id) = 0;
 };
 
-template <typename Entity>
-class RepositoryImpl : public Repository<Entity> {
+template <typename T>
+class RepositoryImpl : public Repository<T> {
 public:
-    RepositoryImpl(Dao<Entity>& dao) : dao_(dao)
+    RepositoryImpl(Dao<T>& dao) : dao_(dao)
     {
     }
 
     ~RepositoryImpl() override = default;
 
-    absl::StatusOr<Entity*> Find(const std::string& id) override
+  absl::StatusOr<typename Repository<T>::EntityPtr> Find(const std::string& id) override
     {
         auto it = id_map_.find(id);
         if (it != id_map_.end()) {
-            return it->second.entity_ptr.get();
+            return it->second.entity_ptr;
         }
 
         std::string cas_token;
-        auto status_or_entity_ptr = dao_.Get(id, &cas_token);
-        if (!status_or_entity_ptr.ok()) {
-          return status_or_entity_ptr.status();
+        std::shared_ptr<T> entity_ptr;
+        auto status = dao_.Get(id, &entity_ptr, &cas_token);
+        if (!status.ok()) {
+            return status;
         }
-        it = id_map_.emplace(id, EntityState{.entity_ptr = std::move(*status_or_entity_ptr), .cas_token = cas_token})
-                     .first;
-        return it->second.entity_ptr.get();
+        id_map_.emplace(id, EntityState{.entity_ptr = entity_ptr, .cas_token = cas_token});
+        return entity_ptr;
     }
 
     absl::Status Remove(const std::string& id) override
@@ -60,7 +60,7 @@ public:
         return dao_.Del(id);
     }
 
-    absl::Status Save(const Entity& entity) override
+    absl::Status Save(const T& entity) override
     {
         std::string cas_token;
         auto it = id_map_.find(entity.GetId());
@@ -74,14 +74,14 @@ public:
 
 private:
     struct EntityState {
-        std::unique_ptr<Entity> entity_ptr;
+        std::shared_ptr<T> entity_ptr;
         std::string cas_token;
     };
 
     using IdMap = std::unordered_map<std::string, EntityState>;
 
     IdMap id_map_;
-    Dao<Entity>& dao_;
+    Dao<T>& dao_;
 };
 
 }  // namespace ddd
