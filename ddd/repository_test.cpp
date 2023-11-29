@@ -19,7 +19,7 @@ public:
 
     ~OrderDao() override = default;
 
-  absl::Status Get(const std::string& id, std::shared_ptr<ddd::Order>* order_ptr, std::string* cas_token);
+    absl::Status Get(const std::string& id, std::shared_ptr<ddd::Order>* order_ptr, std::string* cas_token);
 
     absl::Status CasPut(const ddd::Order& order, const std::string& cas_token);
 
@@ -28,7 +28,7 @@ public:
     void Reset();
 
 private:
-  static absl::Status FromOrderPO(const std::string& s, std::shared_ptr<ddd::Order>* order_ptr);
+    static absl::Status FromOrderPO(const std::string& s, std::shared_ptr<ddd::Order>* order_ptr);
 
     static std::string ToOrderPO(const ddd::Order& order);
 
@@ -88,15 +88,26 @@ absl::Status OrderDao::FromOrderPO(const std::string& s, std::shared_ptr<ddd::Or
     if (!order_po.ParseFromString(s)) {
         return absl::DataLossError("ParseFromString() failed");
     }
-  *order_ptr = std::make_shared<ddd::Order>(order_po.id(), order_po.price());
-  return absl::OkStatus();
+
+    std::vector<ddd::LineItem> line_items;
+    for (const auto& item : order_po.line_item()) {
+        line_items.emplace_back(item.id(), item.name(), item.price());
+    }
+    *order_ptr = std::make_shared<ddd::Order>(ddd::Order::MakeOrder(order_po.id(), std::move(line_items)));
+    return absl::OkStatus();
 }
 
 std::string OrderDao::ToOrderPO(const ddd::Order& order)
 {
     ddd_po::Order order_po;
     order_po.set_id(order.GetId());
-    order_po.set_price(order.GetPrice());
+    order_po.set_total_price(order.GetTotalPrice());
+    for (const auto& item : order.GetLineItems()) {
+        auto* p = order_po.add_line_item();
+        p->set_id(item.GetId());
+        p->set_name(item.GetName());
+        p->set_price(item.GetPrice());
+    }
     std::string result;
     order_po.SerializeToString(&result);
     return result;
@@ -126,7 +137,7 @@ TEST_F(RepositoryTest, SaveAndFind)
     EXPECT_TRUE(absl::IsNotFound(status_or_order_ptr.status()));
 
     // Add an enity.
-    ddd::Order newOrder{"a", 1};
+    ddd::Order newOrder{"a"};
     auto s = repo.Save(newOrder);
     EXPECT_TRUE(s.ok()) << s.ToString();
 
@@ -136,15 +147,14 @@ TEST_F(RepositoryTest, SaveAndFind)
     auto order_p1 = status_or_order_ptr.value();
     EXPECT_FALSE(order_p1.expired());
     EXPECT_EQ(order_p1.lock()->GetId(), "a");
-    EXPECT_EQ(order_p1.lock()->GetPrice(), 1);
-    order_p1.lock()->SetPrice(2);
+    order_p1.lock()->AddLineItem("apple", 10);
 
     // If we find it again, it will return the same object.
     status_or_order_ptr = repo.Find("a");
     EXPECT_TRUE(status_or_order_ptr.ok());
     auto order_p2 = status_or_order_ptr.value();
     EXPECT_EQ(order_p2.lock(), order_p1.lock());
-    EXPECT_EQ(order_p2.lock()->GetPrice(), 2);
+    EXPECT_EQ(order_p2.lock()->GetTotalPrice(), 10);
 }
 
 TEST_F(RepositoryTest, MultiSessionConflicts)
@@ -160,12 +170,12 @@ TEST_F(RepositoryTest, MultiSessionConflicts)
     EXPECT_TRUE(absl::IsNotFound(status_or_order_ptr.status()));
 
     // Session 1: add and save an entity.
-    ddd::Order newOrder{"a", 1};
+    ddd::Order newOrder{"a"};
     auto s = repo1.Save(newOrder);
     EXPECT_TRUE(s.ok());
 
     // Session 2: save the same entity, and we will get conflicts.
-    ddd::Order newOrder2{"a", 2};
+    ddd::Order newOrder2{"a"};
     s = repo2.Save(newOrder2);
     EXPECT_TRUE(absl::IsAborted(s)) << s.ToString();
 }
@@ -173,7 +183,7 @@ TEST_F(RepositoryTest, MultiSessionConflicts)
 TEST_F(RepositoryTest, MultiSessionConflicts2)
 {
     ddd::RepositoryImpl<ddd::Order> repo1{dao_}, repo2{dao_};
-    EXPECT_TRUE(repo1.Save(ddd::Order{"a", 1}).ok());
+    EXPECT_TRUE(repo1.Save(ddd::Order{"a"}).ok());
 
     // Session 1: find an entity.
     auto status_or_order_ptr = repo1.Find("a");
@@ -184,7 +194,7 @@ TEST_F(RepositoryTest, MultiSessionConflicts2)
     status_or_order_ptr = repo2.Find("a");
     EXPECT_TRUE(status_or_order_ptr.ok());
     auto order2 = status_or_order_ptr.value();
-    EXPECT_EQ(order1.lock()->GetPrice(), order2.lock()->GetPrice());
+    EXPECT_EQ(order1.lock()->GetTotalPrice(), order2.lock()->GetTotalPrice());
 
     // Session 2: remove the entity.
     auto s = repo2.Remove(order2.lock()->GetId());
@@ -192,7 +202,7 @@ TEST_F(RepositoryTest, MultiSessionConflicts2)
     EXPECT_TRUE(order2.expired());
 
     // Session 1: modify and save the entity.
-    order1.lock()->SetPrice(2);
+    order1.lock()->AddLineItem("apple", 2);
     s = repo1.Save(*order1.lock());
     EXPECT_TRUE(absl::IsAborted(s));
     EXPECT_TRUE(order1.expired());

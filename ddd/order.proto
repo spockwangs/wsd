@@ -2,7 +2,16 @@ syntax = "proto3";
 
 package ddd_po;
 
-message Order {
+message Order
+{
     optional string id = 1;
-    optional int32 price = 2;
+    optional int32 total_price = 2;
+    repeated LineItem line_item = 3;
+}
+
+message LineItem
+{
+    optional string id = 1;
+    optional string name = 2;
+    optional int32 price = 3;
 }
