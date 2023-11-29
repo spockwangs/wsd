@@ -8,9 +8,21 @@
 
 #include <string>
 
-#include "repository.h"
-
 namespace ddd {
+
+class Entity {
+public:
+    Entity() = default;
+
+    virtual ~Entity() = default;
+
+    // Entity should not be copied. We should not have two copies of the same entity in one session.
+    Entity(const Entity&) = delete;
+    void operator=(const Entity&) = delete;
+
+    virtual std::string GetId() const = 0;
+};
+
 
 class Order : public Entity {
 public:

@@ -6,21 +6,9 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "entity.h"
 
 namespace ddd {
-
-class Entity {
-public:
-    Entity() = default;
-
-    virtual ~Entity() = default;
-
-    // Entity should not be copied. We should not have two copies of the same entity in one session.
-    Entity(const Entity&) = delete;
-    void operator=(const Entity&) = delete;
-
-    virtual std::string GetId() const = 0;
-};
 
 template <typename T, std::enable_if_t<std::is_base_of<Entity, T>::value, bool> = true>
 class Repository {
