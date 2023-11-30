@@ -10,7 +10,7 @@
 #include "order_dao_kv_impl.h"
 #include "repository.h"
 
-class RepositoryTest : public testing::Test {
+class PersistenceRepositoryTest : public testing::Test {
 public:
     void SetUp() override
     {
@@ -30,7 +30,7 @@ protected:
     ddd::infra::OrderDaoKvImpl dao_;
 };
 
-TEST_F(RepositoryTest, SaveAndFind)
+TEST_F(PersistenceRepositoryTest, SaveAndFind)
 {
     auto repo_ptr = MakeRepository();
     auto& repo = *repo_ptr;
@@ -60,7 +60,7 @@ TEST_F(RepositoryTest, SaveAndFind)
     EXPECT_EQ(order_p2.lock()->GetTotalPrice(), 10);
 }
 
-TEST_F(RepositoryTest, MultiSessionConflicts)
+TEST_F(PersistenceRepositoryTest, MultiSessionConflicts)
 {
     auto repo_ptr_1 = MakeRepository();
     auto repo_ptr_2 = MakeRepository();
@@ -86,7 +86,7 @@ TEST_F(RepositoryTest, MultiSessionConflicts)
     EXPECT_TRUE(absl::IsAborted(s)) << s.ToString();
 }
 
-TEST_F(RepositoryTest, MultiSessionConflicts2)
+TEST_F(PersistenceRepositoryTest, MultiSessionConflicts2)
 {
     auto repo_ptr_1 = MakeRepository();
     auto repo_ptr_2 = MakeRepository();

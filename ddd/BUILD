@@ -31,9 +31,12 @@ cc_library(
     hdrs = [
         "order_dao_kv_impl.h",
         "persistence_repository_impl.h",
+        "collection_repository_impl.h",
+        "order_dao_db_impl.h",
     ],
     srcs = [
         "order_dao_kv_impl.cpp",
+        "order_dao_db_impl.cpp",
     ],
     deps = [
         ":domain",
@@ -44,9 +47,21 @@ cc_library(
 )
 
 cc_test(
-    name = "repository_test",
+    name = "persistence_repository_test",
     srcs = [
-        "repository_test.cpp",
+        "persistence_repository_test.cpp",
+    ],
+    deps = [
+        "@gtest//:gtest_main",
+        ":infra",
+    ],
+    linkstatic = True,
+)
+
+cc_test(
+    name = "collection_repository_test",
+    srcs = [
+        "collection_repository_test.cpp",
     ],
     deps = [
         "@gtest//:gtest_main",

@@ -26,7 +26,7 @@ public:
 
     PersistenceRepository(PersistenceRepository&&) = default;
     PersistenceRepository& operator=(PersistenceRepository&&) = default;
-    
+
     // The returned entity is actually borrowed from the repository, so we return a pointer.
     virtual absl::StatusOr<EntityPtr> Find(const std::string& id) = 0;
 
@@ -46,12 +46,18 @@ public:
 
     virtual ~CollectionRepository() = default;
 
+    CollectionRepository(const CollectionRepository&) = delete;
+    void operator=(const CollectionRepository&) = delete;
+
+    CollectionRepository(CollectionRepository&&) = default;
+    CollectionRepository& operator=(CollectionRepository&&) = default;
+
     // The returned entity is actually borrowed from the repository, so we return a pointer.
     virtual absl::StatusOr<EntityPtr> Find(const std::string& id) = 0;
 
-    virtual absl::Status Add(const T& entity) = 0;
+    virtual EntityPtr Add(const T& entity) = 0;
 
-    virtual absl::Status Remove(const std::string& id) = 0;
+    virtual void Remove(const std::string& id) = 0;
 
     virtual absl::Status Commit() = 0;
 };
