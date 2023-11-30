@@ -11,6 +11,7 @@
 namespace ddd {
 namespace domain {
 
+template <typename T>
 class Entity {
 public:
     Entity() = default;
@@ -18,6 +19,8 @@ public:
     virtual ~Entity() = default;
 
     virtual std::string GetId() const = 0;
+
+    virtual bool Equals(const T& other) const = 0;
 };
 
 }  // namespace domain

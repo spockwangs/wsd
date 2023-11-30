@@ -48,11 +48,10 @@ public:
     {
         auto it = id_map_.find(id);
         if (it != id_map_.end()) {
-            if (it->second.status == Status::DELETED) {
+            if (it->second.entity_ptr == nullptr) {
                 return absl::NotFoundError("");
-            } else {
-                return it->second.entity_ptr;
             }
+            return it->second.entity_ptr;
         }
 
         std::shared_ptr<T> entity_ptr;
@@ -61,7 +60,10 @@ public:
         if (!s.ok()) {
             return s;
         }
-        id_map_.insert({id, EntityState{.entity_ptr = entity_ptr, .status = Status::CLEAN, .cas_token = cas_token}});
+        id_map_.insert({id,
+                        EntityState{.snapshot = std::make_unique<T>(*entity_ptr),
+                                    .cas_token = cas_token,
+                                    .entity_ptr = entity_ptr}});
         return entity_ptr;
     }
 
@@ -70,14 +72,11 @@ public:
         auto it = id_map_.find(entity.GetId());
         if (it == id_map_.end()) {
             std::shared_ptr<T> entity_ptr = std::make_shared<T>(entity);
-            id_map_.insert({entity.GetId(), EntityState{.entity_ptr = entity_ptr, .status = Status::NEW}});
+            id_map_.insert({entity.GetId(), EntityState{.snapshot = nullptr, .cas_token = "", .entity_ptr = entity_ptr}});
             return entity_ptr;
         }
 
-        if (it->second.status == Status::CLEAN || it->second.status == Status::DELETED) {
-            it->second.status = Status::MODIFIED;
-        }
-        it->second.entity_ptr = std::make_shared<T>(entity);
+        *it->second.entity_ptr = entity;
         return it->second.entity_ptr;
     }
 
@@ -85,14 +84,9 @@ public:
     {
         auto it = id_map_.find(id);
         if (it == id_map_.end()) {
-          EntityState entity_state{
-            .entity_ptr = nullptr,
-            .status = Status::DELETED,
-            .cas_token = ""
-          };
-          id_map_.insert({id, entity_state});
+            id_map_.insert({id, EntityState{}});
         } else {
-            it->second.status = Status::DELETED;
+            it->second.entity_ptr.reset();
         }
     }
 
@@ -103,23 +97,27 @@ public:
             return s;
         }
         for (const auto& entry : id_map_) {
-          const auto& entity_state = entry.second;
-            switch (entity_state.status) {
-            case Status::CLEAN:
-                s = dao_.CheckCasToken(entity_state.entity_ptr->GetId(), entity_state.cas_token);
-                break;
-            case Status::MODIFIED:
-                s = dao_.Update(*entity_state.entity_ptr, entity_state.cas_token);
-                break;
-            case Status::NEW:
-                s = dao_.Insert(*entity_state.entity_ptr);
-                break;
-            case Status::DELETED:
+            const auto& entity_state = entry.second;
+            if (entity_state.snapshot == nullptr) {
+                if (entity_state.entity_ptr == nullptr) {
+                    // Deleted blindly.
+                    s = dao_.Delete(entity_state.entity_ptr->GetId(), "");
+                } else {
+                    // Inserted.
+                    s = dao_.Insert(*entity_state.entity_ptr);
+                }
+            } else if (entity_state.entity_ptr == nullptr) {
+                // Deleted conditionally.
                 s = dao_.Delete(entity_state.entity_ptr->GetId(), entity_state.cas_token);
-                break;
+            } else if (!entity_state.snapshot->Equals(*entity_state.entity_ptr)) {
+                // Updated.
+                s = dao_.Update(*entity_state.entity_ptr, entity_state.cas_token);
+            } else {
+                // Clean.
+                s = dao_.CheckCasToken(entity_state.entity_ptr->GetId(), entity_state.cas_token);
             }
             if (!s.ok()) {
-              return s;
+                return s;
             }
         }
         return dao_.Commit();
@@ -129,9 +127,9 @@ private:
     enum class Status { CLEAN, MODIFIED, NEW, DELETED };
 
     struct EntityState {
-        std::shared_ptr<T> entity_ptr;
-        Status status;
+        std::unique_ptr<T> snapshot;
         std::string cas_token;
+        std::shared_ptr<T> entity_ptr;
     };
 
     using IdMap = std::unordered_map<std::string, EntityState>;

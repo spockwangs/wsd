@@ -73,7 +73,6 @@ TEST_F(CollectionRepositoryTest, SaveAndFind)
 
     // Add a line item.
     order->AddLineItem("banana", 5);
-    repo2.Add(*order);
     EXPECT_TRUE(repo2.Commit().ok());
 
     // In the third session.
