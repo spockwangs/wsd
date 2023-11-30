@@ -35,8 +35,12 @@ public:
     virtual absl::Status Save(const T& entity) = 0;
 };
 
-// Collection-oriented repository interface. `Add()` and `Remove()` is called to manipulate the
-// collection. You should call `Commit()` to make the changes persistent and complete the transaction.
+// Collection-oriented repository interface.
+//
+// - `Find()` is used to reconstitute the entity.
+// - To add an new entity, call `Add()`.
+// - To remove an entity, call `Remove()`.
+// - After the work is done, call `Commit()` to make the changes durable.
 template <typename T, std::enable_if_t<std::is_base_of<Entity, T>::value, bool> = true>
 class CollectionRepository {
 public:
@@ -52,7 +56,7 @@ public:
     CollectionRepository(CollectionRepository&&) = default;
     CollectionRepository& operator=(CollectionRepository&&) = default;
 
-    // The returned entity is actually borrowed from the repository, so we return a pointer.
+    // The returned entity is actually borrowed from the repository, so we return a weak pointer.
     virtual absl::StatusOr<EntityPtr> Find(const std::string& id) = 0;
 
     virtual EntityPtr Add(const T& entity) = 0;

@@ -85,12 +85,9 @@ public:
     {
         auto it = id_map_.find(id);
         if (it == id_map_.end()) {
-          EntityState entity_state{
-            .entity_ptr = nullptr,
-            .status = Status::DELETED,
-            .cas_token = ""
-          };
-          id_map_.insert({id, entity_state});
+            // Not found. Delete the entity blindly without checking the cas token.
+            EntityState entity_state{.entity_ptr = nullptr, .status = Status::DELETED, .cas_token = ""};
+            id_map_.insert({id, entity_state});
         } else {
             it->second.status = Status::DELETED;
         }
@@ -103,7 +100,7 @@ public:
             return s;
         }
         for (const auto& entry : id_map_) {
-          const auto& entity_state = entry.second;
+            const auto& entity_state = entry.second;
             switch (entity_state.status) {
             case Status::CLEAN:
                 s = dao_.CheckCasToken(entity_state.entity_ptr->GetId(), entity_state.cas_token);
@@ -119,7 +116,7 @@ public:
                 break;
             }
             if (!s.ok()) {
-              return s;
+                return s;
             }
         }
         return dao_.Commit();
