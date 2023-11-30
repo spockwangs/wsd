@@ -14,13 +14,12 @@ namespace domain {
 template <typename T>
 class Entity {
 public:
-    Entity() = default;
-
-    virtual ~Entity() = default;
-
     virtual std::string GetId() const = 0;
 
     virtual bool Equals(const T& other) const = 0;
+
+protected:
+    ~Entity() = default;
 };
 
 }  // namespace domain
