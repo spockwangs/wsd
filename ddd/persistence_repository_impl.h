@@ -32,13 +32,15 @@ public:
 template <typename T>
 class PersistenceRepositoryImpl : public domain::PersistenceRepository<T> {
 public:
+    using EntityPtr = typename domain::PersistenceRepository<T>::EntityPtr;
+
     PersistenceRepositoryImpl(Dao<T>& dao) : dao_(dao)
     {
     }
 
     ~PersistenceRepositoryImpl() override = default;
 
-    absl::StatusOr<typename domain::PersistenceRepository<T>::EntityPtr> Find(const std::string& id) override
+    absl::StatusOr<EntityPtr> Find(const std::string& id) override
     {
         auto it = id_map_.find(id);
         if (it != id_map_.end()) {
