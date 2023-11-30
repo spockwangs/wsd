@@ -19,6 +19,7 @@ cc_library(
         "entity.h",
     ],
     srcs = [
+        "order.cpp",
     ],
     deps = [
         "@google_absl//absl/status:status",
