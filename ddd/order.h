@@ -14,7 +14,7 @@
 namespace ddd {
 namespace domain {
 
-class LineItem : public Entity<LineItem> {
+class LineItem final : public Entity<LineItem> {
 public:
     LineItem(const std::string& item_id, const std::string& name, int price);
 

@@ -103,12 +103,15 @@ absl::Status OrderDaoDbImpl::Delete(const std::string& id, const std::string& ca
         return absl::NotFoundError("");
     }
 
-    int old_version = 0;
-    if (!absl::SimpleAtoi(cas_token, &old_version)) {
-        return absl::InvalidArgumentError("");
-    }
-    if (old_version != it->second.version) {
-        return absl::AbortedError("");
+    // If `cas_token` is empty, delete blindly without checking version.
+    if (!cas_token.empty()) {
+        int old_version = 0;
+        if (!absl::SimpleAtoi(cas_token, &old_version)) {
+            return absl::InvalidArgumentError("");
+        }
+        if (old_version != it->second.version) {
+            return absl::AbortedError("");
+        }
     }
 
     for (auto it = line_item_map_.begin(); it != line_item_map_.end();) {
