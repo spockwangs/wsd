@@ -123,9 +123,7 @@ public:
         return dao_.Commit();
     }
 
-private:
-    enum class Status { CLEAN, MODIFIED, NEW, DELETED };
-
+private
     struct EntityState {
         std::unique_ptr<T> snapshot;
         std::string cas_token;

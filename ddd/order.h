@@ -14,8 +14,16 @@
 namespace ddd {
 namespace domain {
 
+struct LineItemDto {
+    std::string id;
+    std::string name;
+    int price;
+};
+
 class LineItem final : public Entity<LineItem> {
 public:
+    static LineItem MakeLineItem(const LineItemDto& line_item_dto);
+    
     LineItem(const std::string& item_id, const std::string& name, int price);
 
     bool Equals(const LineItem& other) const override;
@@ -32,11 +40,17 @@ private:
     int price_ = 0;
 };
 
+struct OrderDto {
+    std::string id;
+    int total_price;
+    std::vector<LineItemDto> line_items;
+};
+
 class Order : public Entity<Order> {
 public:
-    static Order MakeOrder(const std::string& id, const std::vector<LineItem>& line_items);
+    static Order MakeOrder(const OrderDto& order_dto);
 
-    Order(const std::string& id);
+    explicit Order(const std::string& id);
 
     ~Order() = default;
 
@@ -48,6 +62,8 @@ public:
 
     void AddLineItem(const std::string& name, int price);
 
+    void RemoveLineItem(const std::string& line_item_id);
+
     const std::vector<LineItem>& GetLineItems() const;
 
 private:
@@ -56,6 +72,43 @@ private:
     std::string id_;
     int total_price_ = 0;
     std::vector<LineItem> line_items_;
+};
+
+struct LazyOrderDto {
+    std::string id;
+    int total_price;
+};
+
+class LazyOrder : public Entity<Order> {
+public:
+    static LazyOrder MakeOrder(const LazyOrderDto& lazy_order_dto);
+
+    LazyOrder(LazyOrderRepository& repo, const std::string& id, int total_price);
+
+    ~LazyOrder() = default;
+
+    bool Equals(const LazyOrder& other) const override;
+
+    std::string GetId() const override;
+
+    int GetTotalPrice() const;
+
+    void AddLineItem(const std::string& name, int price);
+
+    void RemoveLineItem(const std::string& line_item_id);
+
+    const std::vector<LazyOrderRepository::LineItemPtr>& GetLineItems() const;
+
+private:
+    std::string GenLineItemId() const;
+
+    absl::Status LoadLineItemsIfNecessary();
+    
+    LazyOrderRepository& repo_;
+    std::string id_;
+    int total_price_ = 0;
+    bool line_item_loaded_ = false;
+    std::vector<LazyOrderRepository::LineItemPtr> line_items_;
 };
 
 }  // namespace domain
