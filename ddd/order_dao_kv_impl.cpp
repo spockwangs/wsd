@@ -20,11 +20,15 @@ absl::Status FromOrderPO(const std::string& s, std::shared_ptr<domain::Order>* o
         return absl::DataLossError("ParseFromString() failed");
     }
 
+    domain::OrderDto order_dto;
+    order_dto.id = order_po.id();
+    order_dto.total_price = order_po.total_price();
     std::vector<domain::LineItem> line_items;
     for (const auto& item : order_po.line_item()) {
-        line_items.emplace_back(item.id(), item.name(), item.price());
+        order_dto.line_items.emplace_back(domain::LineItemDto{
+                .order_id = order_po.id(), .item_id = item.id(), .name = item.name(), .price = item.price()});
     }
-    *order_ptr = std::make_shared<domain::Order>(domain::Order::MakeOrder(order_po.id(), line_items));
+    *order_ptr = std::make_shared<domain::Order>(domain::Order::MakeOrder(order_dto));
     return absl::OkStatus();
 }
 

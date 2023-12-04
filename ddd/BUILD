@@ -34,10 +34,15 @@ cc_library(
         "persistence_repository_impl.h",
         "collection_repository_impl.h",
         "order_dao_db_impl.h",
+        "lazy_order_repository_impl.h",
+        "lazy_order_dao_db_impl.h",
+        "change_tracker.h",
     ],
     srcs = [
         "order_dao_kv_impl.cpp",
         "order_dao_db_impl.cpp",
+        "lazy_order_dao_db_impl.cpp",
+        "lazy_order_repository_impl.cpp",
     ],
     deps = [
         ":domain",
@@ -63,6 +68,18 @@ cc_test(
     name = "collection_repository_test",
     srcs = [
         "collection_repository_test.cpp",
+    ],
+    deps = [
+        "@gtest//:gtest_main",
+        ":infra",
+    ],
+    linkstatic = True,
+)
+
+cc_test(
+    name = "lazy_order_repository_test",
+    srcs = [
+        "lazy_order_repository_test.cpp",
     ],
     deps = [
         "@gtest//:gtest_main",

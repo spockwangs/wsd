@@ -36,13 +36,18 @@ absl::Status OrderDaoDbImpl::Select(const std::string& id,
         return absl::NotFoundError("");
     }
 
-    std::vector<domain::LineItem> line_items;
+    domain::OrderDto order_dto;
+    order_dto.id = id;
+    order_dto.total_price = it->second.total_price;
     for (const auto& line_item : line_item_map_) {
         if (line_item.second.order_id == id) {
-            line_items.emplace_back(line_item.second.id, line_item.second.name, line_item.second.price);
+            order_dto.line_items.emplace_back(domain::LineItemDto{.order_id = line_item.second.order_id,
+                                                                  .item_id = line_item.second.id,
+                                                                  .name = line_item.second.name,
+                                                                  .price = line_item.second.price});
         }
     }
-    *order = std::make_shared<domain::Order>(domain::Order::MakeOrder(id, line_items));
+    *order = std::make_shared<domain::Order>(domain::Order::MakeOrder(order_dto));
     *cas_token = std::to_string(it->second.version);
     return absl::OkStatus();
 }
@@ -57,7 +62,7 @@ absl::Status OrderDaoDbImpl::Insert(const domain::Order& order)
 
     for (const auto& line_item : order.GetLineItems()) {
         LineItemDto line_item_dto = FromLineItem(order.GetId(), line_item);
-        if (line_item_map_.insert({line_item_dto.order_id + "/" + line_item_dto.id, line_item_dto}).second == false) {
+        if (line_item_map_.insert({line_item.GetId(), line_item_dto}).second == false) {
             return absl::AbortedError("");
         }
     }
@@ -91,7 +96,7 @@ absl::Status OrderDaoDbImpl::Update(const domain::Order& order, const std::strin
     }
 
     for (const auto& line_item : order.GetLineItems()) {
-        line_item_map_[order.GetId() + "/" + line_item.GetId()] = FromLineItem(order.GetId(), line_item);
+        line_item_map_[line_item.GetId()] = FromLineItem(order.GetId(), line_item);
     }
     return absl::OkStatus();
 }

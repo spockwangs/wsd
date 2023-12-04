@@ -66,28 +66,28 @@ public:
     virtual absl::Status Commit() = 0;
 };
 
-class Order;
+class LazyOrder;
 class LineItem;
 
 class LazyOrderRepository {
 public:
     using LazyOrderPtr = std::weak_ptr<LazyOrder>;
     using LineItemPtr = std::weak_ptr<LineItem>;
-    
-    virtual absl::StatusOr<OrderPtr> Find(const std::string& id) = 0;
+
+    virtual absl::StatusOr<LazyOrderPtr> Find(const std::string& id) = 0;
 
     virtual absl::Status FindLineItems(const std::string& id, std::vector<LineItemPtr>* line_items) = 0;
-    
-    virtual OrderPtr AddOrder(const Order& order) = 0;
+
+    virtual LazyOrderPtr AddOrder(const LazyOrder& order) = 0;
 
     virtual void RemoveOrder(const std::string& id) = 0;
 
     virtual LineItemPtr AddLineItem(const LineItem& line_item) = 0;
 
-    virtual void RemoveLineItem(const std::string& order_id, const std::string& id) = 0;
-    
+    virtual void RemoveLineItem(const std::string& id) = 0;
+
     virtual absl::Status Commit() = 0;
-    
+
 protected:
     ~LazyOrderRepository() = default;
 };

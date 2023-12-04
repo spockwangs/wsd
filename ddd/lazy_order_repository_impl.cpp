@@ -13,96 +13,58 @@ LazyOrderRepositoryImpl::LazyOrderRepositoryImpl(LazyOrderDao& dao) : dao_(dao)
 {
 }
 
-absl::StatusOr<LazyOrderPtr> LazyOrderRepositoryImpl::Find(const std::string& id)
+absl::StatusOr<LazyOrderRepositoryImpl::LazyOrderPtr> LazyOrderRepositoryImpl::Find(const std::string& id)
 {
-    auto it = lazy_order_id_map_.find(id);
-    if (it != lazy_order_id_map_.end()) {
-        if (it->second.entity_ptr == nullptr) {
+    auto status_or_order_ptr = order_change_tracker_.Find(id);
+    if (status_or_order_ptr.ok()) {
+        if (status_or_order_ptr.value().expired()) {
             return absl::NotFoundError("");
         }
-        return it->second.entity_ptr;
+        return status_or_order_ptr;
     }
 
-    std::shared_ptr<domain::LazyOrder> entity_ptr;
     std::string cas_token;
-    auto s = dao_.SelectOrder(id, &entity_ptr, &cas_token);
+    domain::LazyOrderDto order_dto;
+    auto s = dao_.SelectOrder(id, &order_dto, &cas_token);
     if (!s.ok()) {
         return s;
     }
-    lazy_order_id_map_.insert(
-            {id,
-             EntityState<domain::LazyOrder>{.snapshot = std::make_unique<domain::LazyOrder>(*entity_ptr),
-                                            .cas_token = cas_token,
-                                            .entity_ptr = entity_ptr}});
-    return entity_ptr;
+    return order_change_tracker_.RegisterClean(domain::LazyOrder::MakeOrder(*this, order_dto), cas_token);
 }
 
 absl::Status LazyOrderRepositoryImpl::FindLineItems(const std::string& id, std::vector<LineItemPtr>* line_items)
 {
-    std::vector < std::pair<std::shared_ptr<domain::LineItem>, std::string> line_item_ptr_cas_token_vec;
-    auto s = dao_.SelectLineItems(id, &line_item_ptr_cas_token_vec);
+    std::vector<std::pair<domain::LineItemDto, std::string>> line_item_cas_token_vec;
+    auto s = dao_.SelectLineItems(id, &line_item_cas_token_vec);
     if (!s.ok()) {
         return s;
     }
 
-    for (const auto& entry : line_item_ptr_cas_token_vec) {
-        line_item_id_map_.insert(
-                {id + "/" + entry.first->GetId(),
-                 EntityState<domain::LineItem>{.snapshot = std::make_unique<domain::LineItem>(*entry.first),
-                                               .cas_token = entry.second,
-                                               .entity_ptr = entry.first}});
-        line_items->emplace_back(entry.first);
+    for (const auto& entry : line_item_cas_token_vec) {
+        line_items->push_back(
+                line_item_change_tracker_.RegisterClean(domain::LineItem::MakeLineItem(entry.first), entry.second));
     }
     return absl::OkStatus();
 }
 
-LazyOrderPtr LazyOrderRepositoryImpl::AddOrder(const LazyOrder& order)
+LazyOrderRepositoryImpl::LazyOrderPtr LazyOrderRepositoryImpl::AddOrder(const domain::LazyOrder& order)
 {
-    auto it = lazy_order_id_map_.find(order.GetId());
-    if (it == lazy_order_id_map_.end()) {
-        std::shared_ptr<domain::LazyOrder> entity_ptr = std::make_shared<domain::LazyOrder>(order);
-        id_map_.insert({order.GetId(), EntityState{.snapshot = nullptr, .cas_token = "", .entity_ptr = entity_ptr}});
-        return entity_ptr;
-    }
-
-    *it->second.entity_ptr = entity;
-    return it->second.entity_ptr;
+    return order_change_tracker_.RegisterUpdate(order);
 }
 
 void LazyOrderRepositoryImpl::RemoveOrder(const std::string& id)
 {
-    auto it = lazy_order_id_map_.find(id);
-    if (it == lazy_order_id_map_.end()) {
-        lazy_order_id_map_.insert({id, EntityState<domain::LazyOrder>{}});
-    } else {
-        it->second.entity_ptr.reset();
-    }
+    order_change_tracker_.RegisterRemove(id);
 }
 
-LineItemPtr LazyOrderRepositoryImpl::AddLineItem(const LineItem& line_item)
+LazyOrderRepositoryImpl::LineItemPtr LazyOrderRepositoryImpl::AddLineItem(const domain::LineItem& line_item)
 {
-    const std::string unique_id = line_item.GetOrderId() + "/" + line_item.GetId();
-    auto it = line_item_id_map_.find(unique_id);
-    if (it == line_item_id_map_.end()) {
-        std::shared_ptr<domain::LineItem> entity_ptr = std::make_shared<domain::LineItem>(order);
-        line_item_id_map_.insert(
-                {unique_id, EntityState{.snapshot = nullptr, .cas_token = "", .entity_ptr = entity_ptr}});
-        return entity_ptr;
-    }
-
-    *it->second.entity_ptr = entity;
-    return it->second.entity_ptr;
+    return line_item_change_tracker_.RegisterUpdate(line_item);
 }
 
-void LazyOrderRepositoryImpl::RemoveLineItem(const std::string& order_id, const std::string& id)
+void LazyOrderRepositoryImpl::RemoveLineItem(const std::string& line_item_id)
 {
-    const std::string unique_id = order_id + "/" + id;
-    auto it = line_item_id_map_.find(unique_id);
-    if (it == line_item_id_map_.end()) {
-        line_item_id_map_.insert({unique_id, EntityState<domain::LineItem>{}});
-    } else {
-        it->second.entity_ptr.reset();
-    }
+    return line_item_change_tracker_.RegisterRemove(line_item_id);
 }
 
 absl::Status LazyOrderRepositoryImpl::Commit()
@@ -111,30 +73,46 @@ absl::Status LazyOrderRepositoryImpl::Commit()
     if (!s.ok()) {
         return s;
     }
-    for (const auto& entry : lazy_order_id_map_) {
-        const auto& entity_state = entry.second;
-        if (entity_state.snapshot == nullptr) {
-            if (entity_state.entity_ptr == nullptr) {
-                // Deleted blindly.
-                s = dao_.Delete(entity_state.entity_ptr->GetId(), "");
-            } else {
-                // Inserted.
-                s = dao_.Insert(*entity_state.entity_ptr);
-            }
-        } else if (entity_state.entity_ptr == nullptr) {
-            // Deleted conditionally.
-            s = dao_.Delete(entity_state.entity_ptr->GetId(), entity_state.cas_token);
-        } else if (!entity_state.snapshot->Equals(*entity_state.entity_ptr)) {
-            // Updated.
-            s = dao_.Update(*entity_state.entity_ptr, entity_state.cas_token);
-        } else {
-            // Clean.
-            s = dao_.CheckCasToken(entity_state.entity_ptr->GetId(), entity_state.cas_token);
+    for (const auto& change : order_change_tracker_.GetChanges()) {
+        switch (change.status) {
+        case ChangeTracker<domain::LazyOrder>::EntityChange::Status::INSERTED:
+            s = dao_.InsertOrder(*change.entity);
+            break;
+        case ChangeTracker<domain::LazyOrder>::EntityChange::Status::DELETED:
+            s = dao_.DeleteOrder(change.entity->GetId(), change.cas_token == nullptr ? "" : *change.cas_token);
+            break;
+        case ChangeTracker<domain::LazyOrder>::EntityChange::Status::MODIFIED:
+            s = dao_.UpdateOrder(*change.entity, *change.cas_token);
+            break;
+        case ChangeTracker<domain::LazyOrder>::EntityChange::Status::CLEAN:
+            s = dao_.CheckOrderCasToken(change.entity->GetId(), *change.cas_token);
+            break;
         }
         if (!s.ok()) {
             return s;
         }
     }
+
+    for (const auto& change : line_item_change_tracker_.GetChanges()) {
+        switch (change.status) {
+        case ChangeTracker<domain::LineItem>::EntityChange::Status::INSERTED:
+            s = dao_.InsertLineItem(*change.entity);
+            break;
+        case ChangeTracker<domain::LineItem>::EntityChange::Status::DELETED:
+            s = dao_.DeleteLineItem(change.entity->GetId(), change.cas_token == nullptr ? "" : *change.cas_token);
+            break;
+        case ChangeTracker<domain::LineItem>::EntityChange::Status::MODIFIED:
+            s = dao_.UpdateLineItem(*change.entity, *change.cas_token);
+            break;
+        case ChangeTracker<domain::LineItem>::EntityChange::Status::CLEAN:
+            s = dao_.CheckLineItemCasToken(change.entity->GetId(), *change.cas_token);
+            break;
+        }
+        if (!s.ok()) {
+            return s;
+        }
+    }
+
     return dao_.Commit();
 }
 

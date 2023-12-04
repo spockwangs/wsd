@@ -123,7 +123,7 @@ public:
         return dao_.Commit();
     }
 
-private
+private:
     struct EntityState {
         std::unique_ptr<T> snapshot;
         std::string cas_token;

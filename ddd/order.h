@@ -15,7 +15,8 @@ namespace ddd {
 namespace domain {
 
 struct LineItemDto {
-    std::string id;
+    std::string order_id;
+    std::string item_id;
     std::string name;
     int price;
 };
@@ -23,18 +24,23 @@ struct LineItemDto {
 class LineItem final : public Entity<LineItem> {
 public:
     static LineItem MakeLineItem(const LineItemDto& line_item_dto);
-    
-    LineItem(const std::string& item_id, const std::string& name, int price);
+
+    LineItem(const std::string& order_id, const std::string& item_id, const std::string& name, int price);
 
     bool Equals(const LineItem& other) const override;
 
     std::string GetId() const override;
+
+    std::string GetOrderId() const;
+
+    std::string GetItemId() const;
 
     const std::string& GetName() const;
 
     int GetPrice() const;
 
 private:
+    std::string order_id_;
     std::string item_id_;
     std::string name_;
     int price_ = 0;
@@ -79,13 +85,15 @@ struct LazyOrderDto {
     int total_price;
 };
 
-class LazyOrder : public Entity<Order> {
+class LazyOrder : public Entity<LazyOrder> {
 public:
-    static LazyOrder MakeOrder(const LazyOrderDto& lazy_order_dto);
+    static LazyOrder MakeOrder(LazyOrderRepository& repo, const LazyOrderDto& lazy_order_dto);
 
-    LazyOrder(LazyOrderRepository& repo, const std::string& id, int total_price);
+    LazyOrder(LazyOrderRepository& repo, const std::string& id);
 
     ~LazyOrder() = default;
+
+    LazyOrder& operator=(const LazyOrder& other);
 
     bool Equals(const LazyOrder& other) const override;
 
@@ -97,17 +105,17 @@ public:
 
     void RemoveLineItem(const std::string& line_item_id);
 
-    const std::vector<LazyOrderRepository::LineItemPtr>& GetLineItems() const;
+    const std::vector<LazyOrderRepository::LineItemPtr>& GetLineItems();
 
 private:
     std::string GenLineItemId() const;
 
     absl::Status LoadLineItemsIfNecessary();
-    
+
     LazyOrderRepository& repo_;
     std::string id_;
     int total_price_ = 0;
-    bool line_item_loaded_ = false;
+    bool line_items_loaded_ = false;
     std::vector<LazyOrderRepository::LineItemPtr> line_items_;
 };
 

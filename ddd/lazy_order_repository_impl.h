@@ -6,7 +6,9 @@
 
 #pragma once
 
+#include "change_tracker.h"
 #include "collection_repository_impl.h"
+#include "order.h"
 #include "repository.h"
 
 namespace ddd {
@@ -14,7 +16,7 @@ namespace infra {
 
 class LazyOrderDao {
 public:
-    virtual ~DbDao() = default;
+    virtual ~LazyOrderDao() = default;
 
     virtual absl::Status BeginTransaction() = 0;
 
@@ -23,7 +25,7 @@ public:
     virtual absl::Status Rollback() = 0;
 
     virtual absl::Status SelectOrder(const std::string& id,
-                                     std::shared_ptr<domain::LazyOrder>* order,
+                                     domain::LazyOrderDto* order_dto,
                                      std::string* cas_token) = 0;
 
     virtual absl::Status InsertOrder(const domain::LazyOrder& order) = 0;
@@ -34,13 +36,12 @@ public:
 
     virtual absl::Status CheckOrderCasToken(const std::string& id, const std::string& cas_token) = 0;
 
-    virtual absl::Status SelectLineItems(const std::string& id,
-                                         std::vector<std::shared_ptr<domain::LineItem>>* line_items) = 0;
+    virtual absl::Status SelectLineItems(
+            const std::string& id, std::vector<std::pair<domain::LineItemDto, std::string>>* line_item_cas_token_vec) = 0;
 
-    virtual absl::Status InsertLineItem(const std::string& id, const domain::LineItem& line_item) = 0;
+    virtual absl::Status InsertLineItem(const domain::LineItem& line_item) = 0;
 
-    virtual absl::Status UpdateLineItem(const std::string& id,
-                                        const domain::LineItem& line_item,
+    virtual absl::Status UpdateLineItem(const domain::LineItem& line_item,
                                         const std::string& cas_token) = 0;
 
     virtual absl::Status DeleteLineItem(const std::string& id, const std::string& cas_token) = 0;
@@ -58,29 +59,19 @@ public:
 
     absl::Status FindLineItems(const std::string& id, std::vector<LineItemPtr>* line_items) override;
 
-    LazyOrderPtr AddOrder(const LazyOrder& order) override;
+    LazyOrderPtr AddOrder(const domain::LazyOrder& order) override;
 
     void RemoveOrder(const std::string& id) override;
 
-    LineItemPtr AddLineItem(const LineItem& line_item) override;
+    LineItemPtr AddLineItem(const domain::LineItem& line_item) override;
 
-    void RemoveLineItem(const std::string& order_id, const std::string& id) override;
-    
+    void RemoveLineItem(const std::string& line_item_id) override;
+
     absl::Status Commit() override;
 
 private:
-    template <typename T>
-    struct EntityState {
-        std::unique_ptr<T> snapshot;
-        std::string cas_token;
-        std::shared_ptr<T> entity_ptr;
-    };
-
-    template <typename T>
-    using IdMap = std::unordered_map<std::string, EntityState<T>>;
-
-    IdMap<domain::LazyOrder> lazy_order_id_map_;
-    IdMap<domain::LineItem> line_item_id_map_;
+    ChangeTracker<domain::LazyOrder> order_change_tracker_;
+    ChangeTracker<domain::LineItem> line_item_change_tracker_;
     LazyOrderDao& dao_;
 };
 
