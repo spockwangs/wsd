@@ -111,8 +111,14 @@ void Order::AddLineItem(const std::string& name, int price)
 
 void Order::RemoveLineItem(const std::string& line_item_id)
 {
-    line_items_.erase(std::remove_if(line_items_.begin(), line_items_.end(),
-                                     [&line_item_id](const LineItem& item) { return item.GetId() == line_item_id; }));
+    line_items_.erase(
+            std::remove_if(line_items_.begin(), line_items_.end(), [this, &line_item_id](const LineItem& item) {
+                if (item.GetId() == line_item_id) {
+                    total_price_ -= item.GetPrice();
+                    return true;
+                }
+                return false;
+            }));
 }
 
 const std::vector<LineItem>& Order::GetLineItems() const
@@ -177,17 +183,19 @@ void LazyOrder::AddLineItem(const std::string& name, int price)
     total_price_ += price;
 }
 
-void LazyOrder::RemoveLineItem(const std::string& line_item_id)
+void LazyOrder::RemoveLineItem(const std::string& item_id)
 {
     LoadLineItemsIfNecessary();
-    auto it = std::remove_if(line_items_.begin(), line_items_.end(),
-                             [&line_item_id](const LazyOrderRepository::LineItemPtr& item) {
-                                 return item.lock()->GetItemId() == line_item_id;
-                             });
-    if (it != line_items_.end()) {
-        repo_.RemoveLineItem(it->lock()->GetId());
-        line_items_.erase(it);
-    }
+    line_items_.erase(std::remove_if(line_items_.begin(), line_items_.end(),
+                                     [this, &item_id](const LazyOrderRepository::LineItemPtr& item) {
+                                         auto item_ptr = item.lock();
+                                         if (item_ptr->GetItemId() == item_id) {
+                                             total_price_ -= item_ptr->GetPrice();
+                                             repo_.RemoveLineItem(item_ptr->GetId());
+                                             return true;
+                                         }
+                                         return false;
+                                     }));
 }
 
 const std::vector<LazyOrderRepository::LineItemPtr>& LazyOrder::GetLineItems()

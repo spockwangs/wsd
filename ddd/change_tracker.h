@@ -53,7 +53,11 @@ public:
             return entity_ptr;
         }
 
-        *it->second.entity_ptr = entity;
+        if (it->second.entity_ptr) {
+          *it->second.entity_ptr = entity;
+        } else {
+          it->second.entity_ptr = std::make_shared<T>(entity);
+        }
         return it->second.entity_ptr;
     }
 

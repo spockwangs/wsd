@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include "lazy_order_repository_impl.h"
 #include "lazy_order_dao_db_impl.h"
+#include "lazy_order_repository_impl.h"
 #include "repository.h"
 
 class LazyOrderRepositoryTest : public testing::Test {
@@ -82,6 +82,28 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
     EXPECT_TRUE(status_or_order_ptr.ok());
     order = status_or_order_ptr.value().lock();
     EXPECT_EQ(order->GetTotalPrice(), 15);
+    std::string item_id;
+    for (const auto& line_item_ptr : order->GetLineItems()) {
+        EXPECT_TRUE(!line_item_ptr.expired());
+        auto line_item = line_item_ptr.lock();
+        if (line_item->GetName() == "banana") {
+            item_id = line_item->GetItemId();
+            break;
+        }
+    }
+    EXPECT_TRUE(!item_id.empty());
+    order->RemoveLineItem(item_id);
+    order->AddLineItem("pineapple", 20);
+    EXPECT_TRUE(repo3.Commit().ok());
+
+    // In the fourth session.
+    repo_ptr = MakeRepository();
+    auto& repo4 = *repo_ptr;
+    status_or_order_ptr = repo4.Find("a");
+    EXPECT_TRUE(status_or_order_ptr.ok());
+    order = status_or_order_ptr.value().lock();
+    EXPECT_EQ(order->GetTotalPrice(), 30);
+    EXPECT_EQ(order->GetLineItems().size(), 2);
 }
 
 TEST_F(LazyOrderRepositoryTest, ConcurrencyControl)
