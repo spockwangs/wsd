@@ -53,8 +53,6 @@ http_archive(
 
 load("@rules_cc//cc:repositories.bzl", "rules_cc_dependencies", "rules_cc_toolchains")
 rules_cc_dependencies()
-rules_cc_toolchains()
 
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
 rules_proto_dependencies()
-rules_proto_toolchains()
