@@ -88,8 +88,8 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
         }
     }
     EXPECT_TRUE(!item_id.empty());
-    order->RemoveLineItem(item_id);
-    order->AddLineItem("pineapple", 20);
+    order_4->RemoveLineItem(item_id);
+    order_4->AddLineItem("pineapple", 20);
     EXPECT_TRUE(repo3.Commit().ok());
 
     // In the fourth session.

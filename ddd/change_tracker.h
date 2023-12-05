@@ -19,46 +19,44 @@ namespace infra {
 template <typename T>
 class ChangeTracker final {
 public:
-    using EntityPtr = std::weak_ptr<T>;
-
     ChangeTracker() = default;
 
-    absl::StatusOr<EntityPtr> Find(const std::string& id)
+    // Returns not found error if not tracked, nullptr if deleted, or the tracked entity.
+    absl::StatusOr<T*> Find(const std::string& id)
     {
         auto it = id_map_.find(id);
         if (it != id_map_.end()) {
-          return it->second.entity_ptr;
+            return it->second.entity_ptr.get();
         }
 
         return absl::NotFoundError("");
     }
 
-    EntityPtr RegisterClean(const T& entity, const std::string& cas_token)
+    T* RegisterClean(const T& entity, const std::string& cas_token)
     {
         auto it = id_map_.insert({entity.GetId(),
                                   EntityState{.snapshot = std::make_unique<T>(entity),
                                               .cas_token = cas_token,
-                                              .entity_ptr = std::make_shared<T>(entity)}})
+                                              .entity_ptr = std::make_unique<T>(entity)}})
                           .first;
-        return it->second.entity_ptr;
+        return it->second.entity_ptr.get();
     }
 
-    EntityPtr RegisterUpdate(const T& entity)
+    T* RegisterUpdate(const T& entity)
     {
         auto it = id_map_.find(entity.GetId());
         if (it == id_map_.end()) {
-            std::shared_ptr<T> entity_ptr = std::make_shared<T>(entity);
-            id_map_.insert(
-                    {entity.GetId(), EntityState{.snapshot = nullptr, .cas_token = "", .entity_ptr = entity_ptr}});
-            return entity_ptr;
-        }
-
-        if (it->second.entity_ptr) {
-          *it->second.entity_ptr = entity;
+            std::unique_ptr<T> entity_ptr = std::make_unique<T>(entity);
+            it = id_map_.insert({entity.GetId(),
+                                 EntityState{
+                                         .snapshot = nullptr, .cas_token = "", .entity_ptr = std::move(entity_ptr)}})
+                         .first;
+        } else if (it->second.entity_ptr) {
+            *it->second.entity_ptr = entity;
         } else {
-          it->second.entity_ptr = std::make_shared<T>(entity);
+            it->second.entity_ptr = std::make_unique<T>(entity);
         }
-        return it->second.entity_ptr;
+        return it->second.entity_ptr.get();
     }
 
     void RegisterRemove(const std::string& id)
@@ -119,7 +117,7 @@ private:
     struct EntityState {
         std::unique_ptr<T> snapshot;
         std::string cas_token;
-        std::shared_ptr<T> entity_ptr;
+        std::unique_ptr<T> entity_ptr;
     };
 
     using IdMap = std::unordered_map<std::string, EntityState>;
