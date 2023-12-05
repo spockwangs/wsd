@@ -176,31 +176,42 @@ int LazyOrder::GetTotalPrice() const
     return total_price_;
 }
 
-void LazyOrder::AddLineItem(const std::string& name, int price)
+absl::Status LazyOrder::AddLineItem(const std::string& name, int price)
 {
-    LoadLineItemsIfNecessary();
+    auto s = LoadLineItemsIfNecessary();
+    if (!s.ok()) {
+        return s;
+    }
     line_items_.push_back(repo_.AddLineItem(LineItem{id_, GenLineItemId(), name, price}));
     total_price_ += price;
+    return absl::OkStatus();
 }
 
-void LazyOrder::RemoveLineItem(const std::string& item_id)
+absl::Status LazyOrder::RemoveLineItem(const std::string& item_id)
 {
-    LoadLineItemsIfNecessary();
-    line_items_.erase(std::remove_if(line_items_.begin(), line_items_.end(),
-                                     [this, &item_id](LineItem* item) {
-                                         if (item->GetItemId() == item_id) {
-                                             total_price_ -= item->GetPrice();
-                                             repo_.RemoveLineItem(item->GetId());
-                                             return true;
-                                         }
-                                         return false;
-                                     }));
+    auto s = LoadLineItemsIfNecessary();
+    if (!s.ok()) {
+        return s;
+    }
+    line_items_.erase(std::remove_if(line_items_.begin(), line_items_.end(), [this, &item_id](LineItem* item) {
+        if (item->GetItemId() == item_id) {
+            total_price_ -= item->GetPrice();
+            repo_.RemoveLineItem(item->GetId());
+            return true;
+        }
+        return false;
+    }));
+    return absl::OkStatus();
 }
 
-const std::vector<LineItem*>& LazyOrder::GetLineItems()
+absl::Status LazyOrder::GetLineItems(std::vector<LineItem*>* line_items) const
 {
-    LoadLineItemsIfNecessary();
-    return line_items_;
+    auto s = LoadLineItemsIfNecessary();
+    if (!s.ok()) {
+        return s;
+    }
+    *line_items = line_items_;
+    return absl::OkStatus();
 }
 
 std::string LazyOrder::GenLineItemId() const
@@ -208,7 +219,7 @@ std::string LazyOrder::GenLineItemId() const
     return std::to_string(line_items_.size());
 }
 
-absl::Status LazyOrder::LoadLineItemsIfNecessary()
+absl::Status LazyOrder::LoadLineItemsIfNecessary() const
 {
     if (!line_items_loaded_) {
         auto s = repo_.FindLineItems(id_, &line_items_);

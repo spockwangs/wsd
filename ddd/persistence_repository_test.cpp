@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include "persistence_repository_impl.h"
 #include "order_dao_kv_impl.h"
+#include "persistence_repository_impl.h"
 #include "repository.h"
 
 class PersistenceRepositoryTest : public testing::Test {
@@ -22,9 +22,9 @@ public:
     }
 
 protected:
-    std::unique_ptr<ddd::domain::PersistenceRepository<ddd::domain::Order>> MakeRepository()
+    std::unique_ptr<ddd::domain::PersistenceRepository<std::string, ddd::domain::Order>> MakeRepository()
     {
-        return std::make_unique<ddd::infra::PersistenceRepositoryImpl<ddd::domain::Order>>(dao_);
+        return std::make_unique<ddd::infra::PersistenceRepositoryImpl<std::string, ddd::domain::Order>>(dao_);
     }
 
     ddd::infra::OrderDaoKvImpl dao_;

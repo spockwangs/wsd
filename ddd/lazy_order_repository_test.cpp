@@ -49,7 +49,8 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
     auto* order_1 = status_or_order.value();
     EXPECT_EQ(order_1, order);
     EXPECT_EQ(order_1->GetId(), "a");
-    order_1->AddLineItem("apple", 10);
+    auto s = order_1->AddLineItem("apple", 10);
+    EXPECT_TRUE(s.ok());
 
     // If we find it again, it will return the same object.
     status_or_order = repo.Find("a");
@@ -70,7 +71,8 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
     EXPECT_EQ(order_3->GetTotalPrice(), 10);
 
     // Add a line item.
-    order->AddLineItem("banana", 5);
+    s = order->AddLineItem("banana", 5);
+    EXPECT_TRUE(s.ok());
     EXPECT_TRUE(repo2.Commit().ok());
 
     // In the third session.
@@ -81,15 +83,19 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
     auto* order_4 = status_or_order.value();
     EXPECT_EQ(order_4->GetTotalPrice(), 15);
     std::string item_id;
-    for (auto* line_item : order_4->GetLineItems()) {
+    std::vector<ddd::domain::LineItem*> line_items;
+    s = order_4->GetLineItems(&line_items);
+    EXPECT_TRUE(s.ok());
+    for (auto* line_item : line_items) {
         if (line_item->GetName() == "banana") {
             item_id = line_item->GetItemId();
             break;
         }
     }
     EXPECT_TRUE(!item_id.empty());
-    order_4->RemoveLineItem(item_id);
-    order_4->AddLineItem("pineapple", 20);
+    s = order_4->RemoveLineItem(item_id);
+    s.Update(order_4->AddLineItem("pineapple", 20));
+    EXPECT_TRUE(s.ok());
     EXPECT_TRUE(repo3.Commit().ok());
 
     // In the fourth session.
@@ -99,7 +105,10 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
     EXPECT_TRUE(status_or_order.ok());
     auto* order_5 = status_or_order.value();
     EXPECT_EQ(order_5->GetTotalPrice(), 30);
-    EXPECT_EQ(order_5->GetLineItems().size(), 2);
+    line_items.clear();
+    s = order_5->GetLineItems(&line_items);
+    EXPECT_TRUE(s.ok());
+    EXPECT_EQ(line_items.size(), 2);
 }
 
 TEST_F(LazyOrderRepositoryTest, ConcurrencyControl)

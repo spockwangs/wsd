@@ -35,10 +35,10 @@ public:
     virtual absl::Status CheckCasToken(const std::string& id, const std::string& cas_token) = 0;
 };
 
-template <typename T>
-class CollectionRepositoryImpl : public domain::CollectionRepository<T> {
+template <typename ID, typename T>
+class CollectionRepositoryImpl : public domain::CollectionRepository<ID, T> {
 public:
-    using EntityPtr = typename domain::CollectionRepository<T>::EntityPtr;
+    using EntityPtr = typename domain::CollectionRepository<ID, T>::EntityPtr;
 
     CollectionRepositoryImpl(DbDao<T>& dao) : dao_(dao)
     {
@@ -72,7 +72,8 @@ public:
         auto it = id_map_.find(entity.GetId());
         if (it == id_map_.end()) {
             std::shared_ptr<T> entity_ptr = std::make_shared<T>(entity);
-            id_map_.insert({entity.GetId(), EntityState{.snapshot = nullptr, .cas_token = "", .entity_ptr = entity_ptr}});
+            id_map_.insert(
+                    {entity.GetId(), EntityState{.snapshot = nullptr, .cas_token = "", .entity_ptr = entity_ptr}});
             return entity_ptr;
         }
 

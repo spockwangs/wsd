@@ -22,9 +22,9 @@ public:
     }
 
 protected:
-    std::unique_ptr<ddd::domain::CollectionRepository<ddd::domain::Order>> MakeRepository()
+    std::unique_ptr<ddd::domain::CollectionRepository<std::string, ddd::domain::Order>> MakeRepository()
     {
-        return std::make_unique<ddd::infra::CollectionRepositoryImpl<ddd::domain::Order>>(dao_);
+        return std::make_unique<ddd::infra::CollectionRepositoryImpl<std::string, ddd::domain::Order>>(dao_);
     }
 
     ddd::infra::OrderDaoDbImpl dao_;

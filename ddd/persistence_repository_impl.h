@@ -29,10 +29,10 @@ public:
     virtual absl::Status Del(const std::string& id) = 0;
 };
 
-template <typename T>
-class PersistenceRepositoryImpl : public domain::PersistenceRepository<T> {
+template <typename ID, typename T>
+class PersistenceRepositoryImpl : public domain::PersistenceRepository<ID, T> {
 public:
-    using EntityPtr = typename domain::PersistenceRepository<T>::EntityPtr;
+    using EntityPtr = typename domain::PersistenceRepository<ID, T>::EntityPtr;
 
     PersistenceRepositoryImpl(Dao<T>& dao) : dao_(dao)
     {

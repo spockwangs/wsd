@@ -21,7 +21,7 @@ struct LineItemDto {
     int price;
 };
 
-class LineItem final : public Entity<LineItem> {
+class LineItem final : public Entity<std::string, LineItem> {
 public:
     static LineItem MakeLineItem(const LineItemDto& line_item_dto);
 
@@ -52,7 +52,7 @@ struct OrderDto {
     std::vector<LineItemDto> line_items;
 };
 
-class Order : public Entity<Order> {
+class Order : public Entity<std::string, Order> {
 public:
     static Order MakeOrder(const OrderDto& order_dto);
 
@@ -80,7 +80,7 @@ private:
     std::vector<LineItem> line_items_;
 };
 
-class LazyOrder : public Entity<LazyOrder> {
+class LazyOrder : public Entity<std::string, LazyOrder> {
 public:
     static LazyOrder MakeOrder(LazyOrderRepository& repo, const std::string& id, int total_price);
 
@@ -96,22 +96,22 @@ public:
 
     int GetTotalPrice() const;
 
-    void AddLineItem(const std::string& name, int price);
+    absl::Status AddLineItem(const std::string& name, int price);
 
-    void RemoveLineItem(const std::string& line_item_id);
+    absl::Status RemoveLineItem(const std::string& line_item_id);
 
-    const std::vector<LineItem*>& GetLineItems();
+    absl::Status GetLineItems(std::vector<LineItem*>* line_items) const;
 
 private:
     std::string GenLineItemId() const;
 
-    absl::Status LoadLineItemsIfNecessary();
+    absl::Status LoadLineItemsIfNecessary() const;
 
     LazyOrderRepository& repo_;
     std::string id_;
     int total_price_ = 0;
-    bool line_items_loaded_ = false;
-    std::vector<LineItem*> line_items_;
+    mutable bool line_items_loaded_ = false;
+    mutable std::vector<LineItem*> line_items_;
 };
 
 }  // namespace domain

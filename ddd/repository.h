@@ -13,7 +13,7 @@ namespace ddd {
 namespace domain {
 
 // Persistence-oriented repository interface. You should call `Save()` once the entity is changed.
-template <typename T, std::enable_if_t<std::is_base_of<Entity<T>, T>::value, bool> = true>
+template <typename ID, typename T, std::enable_if_t<std::is_base_of<Entity<ID, T>, T>::value, bool> = true>
 class PersistenceRepository {
 public:
     using EntityPtr = std::weak_ptr<T>;
@@ -42,7 +42,7 @@ public:
 // - To add an new entity, call `Add()`.
 // - To remove an entity, call `Remove()`.
 // - After the work is done, call `Commit()` to make the changes durable.
-template <typename T, std::enable_if_t<std::is_base_of<Entity<T>, T>::value, bool> = true>
+template <typename ID, typename T, std::enable_if_t<std::is_base_of<Entity<ID, T>, T>::value, bool> = true>
 class CollectionRepository {
 public:
     using EntityPtr = std::weak_ptr<T>;
