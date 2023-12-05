@@ -13,14 +13,14 @@ LazyOrderRepositoryImpl::LazyOrderRepositoryImpl(LazyOrderDao& dao) : dao_(dao)
 {
 }
 
-absl::StatusOr<LazyOrderRepositoryImpl::LazyOrderPtr> LazyOrderRepositoryImpl::Find(const std::string& id)
+absl::StatusOr<domain::LazyOrder*> LazyOrderRepositoryImpl::Find(const std::string& id)
 {
     auto status_or_order_ptr = order_change_tracker_.Find(id);
     if (status_or_order_ptr.ok()) {
         if (status_or_order_ptr.value().expired()) {
             return absl::NotFoundError("");
         }
-        return status_or_order_ptr;
+        return status_or_order_ptr.value().lock().get();
     }
 
     std::string cas_token;
@@ -29,10 +29,10 @@ absl::StatusOr<LazyOrderRepositoryImpl::LazyOrderPtr> LazyOrderRepositoryImpl::F
     if (!s.ok()) {
         return s;
     }
-    return order_change_tracker_.RegisterClean(domain::LazyOrder::MakeOrder(*this, order_dto), cas_token);
+    return order_change_tracker_.RegisterClean(domain::LazyOrder::MakeOrder(*this, order_dto), cas_token).lock().get();
 }
 
-absl::Status LazyOrderRepositoryImpl::FindLineItems(const std::string& id, std::vector<LineItemPtr>* line_items)
+absl::Status LazyOrderRepositoryImpl::FindLineItems(const std::string& id, std::vector<domain::LineItem*>* line_items)
 {
     std::vector<std::pair<domain::LineItemDto, std::string>> line_item_cas_token_vec;
     auto s = dao_.SelectLineItems(id, &line_item_cas_token_vec);
@@ -42,14 +42,16 @@ absl::Status LazyOrderRepositoryImpl::FindLineItems(const std::string& id, std::
 
     for (const auto& entry : line_item_cas_token_vec) {
         line_items->push_back(
-                line_item_change_tracker_.RegisterClean(domain::LineItem::MakeLineItem(entry.first), entry.second));
+                line_item_change_tracker_.RegisterClean(domain::LineItem::MakeLineItem(entry.first), entry.second)
+                        .lock()
+                        .get());
     }
     return absl::OkStatus();
 }
 
-LazyOrderRepositoryImpl::LazyOrderPtr LazyOrderRepositoryImpl::AddOrder(const domain::LazyOrder& order)
+domain::LazyOrder* LazyOrderRepositoryImpl::AddOrder(const domain::LazyOrder& order)
 {
-    return order_change_tracker_.RegisterUpdate(order);
+    return order_change_tracker_.RegisterUpdate(order).lock().get();
 }
 
 void LazyOrderRepositoryImpl::RemoveOrder(const std::string& id)
@@ -57,9 +59,9 @@ void LazyOrderRepositoryImpl::RemoveOrder(const std::string& id)
     order_change_tracker_.RegisterRemove(id);
 }
 
-LazyOrderRepositoryImpl::LineItemPtr LazyOrderRepositoryImpl::AddLineItem(const domain::LineItem& line_item)
+domain::LineItem* LazyOrderRepositoryImpl::AddLineItem(const domain::LineItem& line_item)
 {
-    return line_item_change_tracker_.RegisterUpdate(line_item);
+    return line_item_change_tracker_.RegisterUpdate(line_item).lock().get();
 }
 
 void LazyOrderRepositoryImpl::RemoveLineItem(const std::string& line_item_id)

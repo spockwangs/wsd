@@ -36,29 +36,27 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
     auto& repo = *repo_ptr;
 
     // Finding an non-existent entity will return nullptr.
-    auto status_or_order_ptr = repo.Find("a");
-    EXPECT_TRUE(absl::IsNotFound(status_or_order_ptr.status()));
+    auto status_or_order = repo.Find("a");
+    EXPECT_TRUE(absl::IsNotFound(status_or_order.status()));
 
     // Add an enity.
-    auto order_ptr = repo.AddOrder(ddd::domain::LazyOrder{repo, "a"});
-    EXPECT_FALSE(order_ptr.expired());
-    EXPECT_EQ(order_ptr.lock()->GetId(), "a");
+    auto* order = repo.AddOrder(ddd::domain::LazyOrder{repo, "a"});
+    EXPECT_EQ(order->GetId(), "a");
 
     // ... and we will find it.
-    status_or_order_ptr = repo.Find("a");
-    EXPECT_TRUE(status_or_order_ptr.ok());
-    auto order_p1 = status_or_order_ptr.value();
-    EXPECT_FALSE(order_p1.expired());
-    EXPECT_EQ(order_p1.lock(), order_ptr.lock());
-    EXPECT_EQ(order_p1.lock()->GetId(), "a");
-    order_p1.lock()->AddLineItem("apple", 10);
+    status_or_order = repo.Find("a");
+    EXPECT_TRUE(status_or_order.ok());
+    auto* order_1 = status_or_order.value();
+    EXPECT_EQ(order_1, order);
+    EXPECT_EQ(order_1->GetId(), "a");
+    order_1->AddLineItem("apple", 10);
 
     // If we find it again, it will return the same object.
-    status_or_order_ptr = repo.Find("a");
-    EXPECT_TRUE(status_or_order_ptr.ok());
-    auto order_p2 = status_or_order_ptr.value();
-    EXPECT_EQ(order_p2.lock(), order_p1.lock());
-    EXPECT_EQ(order_p2.lock()->GetTotalPrice(), 10);
+    status_or_order = repo.Find("a");
+    EXPECT_TRUE(status_or_order.ok());
+    auto* order_2 = status_or_order.value();
+    EXPECT_EQ(order_2, order_1);
+    EXPECT_EQ(order_2->GetTotalPrice(), 10);
 
     // Commit it.
     EXPECT_TRUE(repo.Commit().ok());
@@ -66,10 +64,10 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
     // In another session, find the order and check it.
     repo_ptr = MakeRepository();
     auto& repo2 = *repo_ptr;
-    status_or_order_ptr = repo2.Find("a");
-    EXPECT_TRUE(status_or_order_ptr.ok());
-    auto order = status_or_order_ptr.value().lock();
-    EXPECT_EQ(order->GetTotalPrice(), 10);
+    status_or_order = repo2.Find("a");
+    EXPECT_TRUE(status_or_order.ok());
+    auto* order_3 = status_or_order.value();
+    EXPECT_EQ(order_3->GetTotalPrice(), 10);
 
     // Add a line item.
     order->AddLineItem("banana", 5);
@@ -78,14 +76,12 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
     // In the third session.
     repo_ptr = MakeRepository();
     auto& repo3 = *repo_ptr;
-    status_or_order_ptr = repo3.Find("a");
-    EXPECT_TRUE(status_or_order_ptr.ok());
-    order = status_or_order_ptr.value().lock();
-    EXPECT_EQ(order->GetTotalPrice(), 15);
+    status_or_order = repo3.Find("a");
+    EXPECT_TRUE(status_or_order.ok());
+    auto* order_4 = status_or_order.value();
+    EXPECT_EQ(order_4->GetTotalPrice(), 15);
     std::string item_id;
-    for (const auto& line_item_ptr : order->GetLineItems()) {
-        EXPECT_TRUE(!line_item_ptr.expired());
-        auto line_item = line_item_ptr.lock();
+    for (auto* line_item : order_4->GetLineItems()) {
         if (line_item->GetName() == "banana") {
             item_id = line_item->GetItemId();
             break;
@@ -99,11 +95,11 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
     // In the fourth session.
     repo_ptr = MakeRepository();
     auto& repo4 = *repo_ptr;
-    status_or_order_ptr = repo4.Find("a");
-    EXPECT_TRUE(status_or_order_ptr.ok());
-    order = status_or_order_ptr.value().lock();
-    EXPECT_EQ(order->GetTotalPrice(), 30);
-    EXPECT_EQ(order->GetLineItems().size(), 2);
+    status_or_order = repo4.Find("a");
+    EXPECT_TRUE(status_or_order.ok());
+    auto* order_5 = status_or_order.value();
+    EXPECT_EQ(order_5->GetTotalPrice(), 30);
+    EXPECT_EQ(order_5->GetLineItems().size(), 2);
 }
 
 TEST_F(LazyOrderRepositoryTest, ConcurrencyControl)
@@ -114,12 +110,12 @@ TEST_F(LazyOrderRepositoryTest, ConcurrencyControl)
     auto& repo2 = *repo_ptr_2;
 
     // Session 1: find an entity.
-    auto status_or_order_ptr = repo1.Find("a");
-    EXPECT_TRUE(absl::IsNotFound(status_or_order_ptr.status()));
+    auto status_or_order = repo1.Find("a");
+    EXPECT_TRUE(absl::IsNotFound(status_or_order.status()));
 
     // Session 2: find the same entity.
-    status_or_order_ptr = repo2.Find("a");
-    EXPECT_TRUE(absl::IsNotFound(status_or_order_ptr.status()));
+    status_or_order = repo2.Find("a");
+    EXPECT_TRUE(absl::IsNotFound(status_or_order.status()));
 
     // Session 1: add an entity.
     repo1.AddOrder(ddd::domain::LazyOrder{repo1, "a"});

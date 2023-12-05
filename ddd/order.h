@@ -105,7 +105,7 @@ public:
 
     void RemoveLineItem(const std::string& line_item_id);
 
-    const std::vector<LazyOrderRepository::LineItemPtr>& GetLineItems();
+    const std::vector<LineItem*>& GetLineItems();
 
 private:
     std::string GenLineItemId() const;
@@ -116,7 +116,7 @@ private:
     std::string id_;
     int total_price_ = 0;
     bool line_items_loaded_ = false;
-    std::vector<LazyOrderRepository::LineItemPtr> line_items_;
+    std::vector<LineItem*> line_items_;
 };
 
 }  // namespace domain

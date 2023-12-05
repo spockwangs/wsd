@@ -37,12 +37,12 @@ public:
     virtual absl::Status CheckOrderCasToken(const std::string& id, const std::string& cas_token) = 0;
 
     virtual absl::Status SelectLineItems(
-            const std::string& id, std::vector<std::pair<domain::LineItemDto, std::string>>* line_item_cas_token_vec) = 0;
+            const std::string& id,
+            std::vector<std::pair<domain::LineItemDto, std::string>>* line_item_cas_token_vec) = 0;
 
     virtual absl::Status InsertLineItem(const domain::LineItem& line_item) = 0;
 
-    virtual absl::Status UpdateLineItem(const domain::LineItem& line_item,
-                                        const std::string& cas_token) = 0;
+    virtual absl::Status UpdateLineItem(const domain::LineItem& line_item, const std::string& cas_token) = 0;
 
     virtual absl::Status DeleteLineItem(const std::string& id, const std::string& cas_token) = 0;
 
@@ -55,15 +55,15 @@ public:
 
     ~LazyOrderRepositoryImpl() = default;
 
-    absl::StatusOr<LazyOrderPtr> Find(const std::string& id) override;
+    absl::StatusOr<domain::LazyOrder*> Find(const std::string& id) override;
 
-    absl::Status FindLineItems(const std::string& id, std::vector<LineItemPtr>* line_items) override;
+    absl::Status FindLineItems(const std::string& id, std::vector<domain::LineItem*>* line_items) override;
 
-    LazyOrderPtr AddOrder(const domain::LazyOrder& order) override;
+    domain::LazyOrder* AddOrder(const domain::LazyOrder& order) override;
 
     void RemoveOrder(const std::string& id) override;
 
-    LineItemPtr AddLineItem(const domain::LineItem& line_item) override;
+    domain::LineItem* AddLineItem(const domain::LineItem& line_item) override;
 
     void RemoveLineItem(const std::string& line_item_id) override;
 

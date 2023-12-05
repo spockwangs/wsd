@@ -187,18 +187,17 @@ void LazyOrder::RemoveLineItem(const std::string& item_id)
 {
     LoadLineItemsIfNecessary();
     line_items_.erase(std::remove_if(line_items_.begin(), line_items_.end(),
-                                     [this, &item_id](const LazyOrderRepository::LineItemPtr& item) {
-                                         auto item_ptr = item.lock();
-                                         if (item_ptr->GetItemId() == item_id) {
-                                             total_price_ -= item_ptr->GetPrice();
-                                             repo_.RemoveLineItem(item_ptr->GetId());
+                                     [this, &item_id](LineItem* item) {
+                                         if (item->GetItemId() == item_id) {
+                                             total_price_ -= item->GetPrice();
+                                             repo_.RemoveLineItem(item->GetId());
                                              return true;
                                          }
                                          return false;
                                      }));
 }
 
-const std::vector<LazyOrderRepository::LineItemPtr>& LazyOrder::GetLineItems()
+const std::vector<LineItem*>& LazyOrder::GetLineItems()
 {
     LoadLineItemsIfNecessary();
     return line_items_;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -71,18 +72,15 @@ class LineItem;
 
 class LazyOrderRepository {
 public:
-    using LazyOrderPtr = std::weak_ptr<LazyOrder>;
-    using LineItemPtr = std::weak_ptr<LineItem>;
+    virtual absl::StatusOr<LazyOrder*> Find(const std::string& id) = 0;
 
-    virtual absl::StatusOr<LazyOrderPtr> Find(const std::string& id) = 0;
+    virtual absl::Status FindLineItems(const std::string& id, std::vector<LineItem*>* line_items) = 0;
 
-    virtual absl::Status FindLineItems(const std::string& id, std::vector<LineItemPtr>* line_items) = 0;
-
-    virtual LazyOrderPtr AddOrder(const LazyOrder& order) = 0;
+    virtual LazyOrder* AddOrder(const LazyOrder& order) = 0;
 
     virtual void RemoveOrder(const std::string& id) = 0;
 
-    virtual LineItemPtr AddLineItem(const LineItem& line_item) = 0;
+    virtual LineItem* AddLineItem(const LineItem& line_item) = 0;
 
     virtual void RemoveLineItem(const std::string& id) = 0;
 
