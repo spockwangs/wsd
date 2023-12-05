@@ -24,27 +24,32 @@ absl::StatusOr<domain::LazyOrder*> LazyOrderRepositoryImpl::Find(const std::stri
     }
 
     std::string cas_token;
-    domain::LazyOrderDto order_dto;
+    LazyOrderDto order_dto;
     auto s = dao_.SelectOrder(id, &order_dto, &cas_token);
     if (!s.ok()) {
         return s;
     }
-    return order_change_tracker_.RegisterClean(domain::LazyOrder::MakeOrder(*this, order_dto), cas_token).lock().get();
+    return order_change_tracker_
+            .RegisterClean(domain::LazyOrder::MakeOrder(*this, order_dto.id, order_dto.total_price), cas_token)
+            .lock()
+            .get();
 }
 
 absl::Status LazyOrderRepositoryImpl::FindLineItems(const std::string& id, std::vector<domain::LineItem*>* line_items)
 {
-    std::vector<std::pair<domain::LineItemDto, std::string>> line_item_cas_token_vec;
+    std::vector<std::pair<LineItemDto, std::string>> line_item_cas_token_vec;
     auto s = dao_.SelectLineItems(id, &line_item_cas_token_vec);
     if (!s.ok()) {
         return s;
     }
 
     for (const auto& entry : line_item_cas_token_vec) {
-        line_items->push_back(
-                line_item_change_tracker_.RegisterClean(domain::LineItem::MakeLineItem(entry.first), entry.second)
-                        .lock()
-                        .get());
+        line_items->push_back(line_item_change_tracker_
+                                      .RegisterClean(domain::LineItem{entry.first.order_id, entry.first.item_id,
+                                                                      entry.first.name, entry.first.price},
+                                                     entry.second)
+                                      .lock()
+                                      .get());
     }
     return absl::OkStatus();
 }
@@ -78,13 +83,13 @@ absl::Status LazyOrderRepositoryImpl::Commit()
     for (const auto& change : order_change_tracker_.GetChanges()) {
         switch (change.status) {
         case ChangeTracker<domain::LazyOrder>::EntityChange::Status::INSERTED:
-            s = dao_.InsertOrder(*change.entity);
+            s = dao_.InsertOrder(ToOrderDto(*change.entity));
             break;
         case ChangeTracker<domain::LazyOrder>::EntityChange::Status::DELETED:
             s = dao_.DeleteOrder(change.entity->GetId(), change.cas_token == nullptr ? "" : *change.cas_token);
             break;
         case ChangeTracker<domain::LazyOrder>::EntityChange::Status::MODIFIED:
-            s = dao_.UpdateOrder(*change.entity, *change.cas_token);
+            s = dao_.UpdateOrder(ToOrderDto(*change.entity), *change.cas_token);
             break;
         case ChangeTracker<domain::LazyOrder>::EntityChange::Status::CLEAN:
             s = dao_.CheckOrderCasToken(change.entity->GetId(), *change.cas_token);
@@ -98,13 +103,13 @@ absl::Status LazyOrderRepositoryImpl::Commit()
     for (const auto& change : line_item_change_tracker_.GetChanges()) {
         switch (change.status) {
         case ChangeTracker<domain::LineItem>::EntityChange::Status::INSERTED:
-            s = dao_.InsertLineItem(*change.entity);
+            s = dao_.InsertLineItem(ToLineItemDto(*change.entity));
             break;
         case ChangeTracker<domain::LineItem>::EntityChange::Status::DELETED:
             s = dao_.DeleteLineItem(change.entity->GetId(), change.cas_token == nullptr ? "" : *change.cas_token);
             break;
         case ChangeTracker<domain::LineItem>::EntityChange::Status::MODIFIED:
-            s = dao_.UpdateLineItem(*change.entity, *change.cas_token);
+            s = dao_.UpdateLineItem(ToLineItemDto(*change.entity), *change.cas_token);
             break;
         case ChangeTracker<domain::LineItem>::EntityChange::Status::CLEAN:
             s = dao_.CheckLineItemCasToken(change.entity->GetId(), *change.cas_token);
@@ -116,6 +121,19 @@ absl::Status LazyOrderRepositoryImpl::Commit()
     }
 
     return dao_.Commit();
+}
+
+LazyOrderDto LazyOrderRepositoryImpl::ToOrderDto(const domain::LazyOrder& order)
+{
+    return LazyOrderDto{.id = order.GetId(), .total_price = order.GetTotalPrice()};
+}
+
+LineItemDto LazyOrderRepositoryImpl::ToLineItemDto(const domain::LineItem& line_item)
+{
+    return LineItemDto{.order_id = line_item.GetOrderId(),
+                       .item_id = line_item.GetItemId(),
+                       .name = line_item.GetName(),
+                       .price = line_item.GetPrice()};
 }
 
 }  // namespace infra

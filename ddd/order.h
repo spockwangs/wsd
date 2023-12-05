@@ -80,14 +80,9 @@ private:
     std::vector<LineItem> line_items_;
 };
 
-struct LazyOrderDto {
-    std::string id;
-    int total_price;
-};
-
 class LazyOrder : public Entity<LazyOrder> {
 public:
-    static LazyOrder MakeOrder(LazyOrderRepository& repo, const LazyOrderDto& lazy_order_dto);
+    static LazyOrder MakeOrder(LazyOrderRepository& repo, const std::string& id, int total_price);
 
     LazyOrder(LazyOrderRepository& repo, const std::string& id);
 

@@ -131,10 +131,10 @@ std::string Order::GenLineItemId() const
     return std::to_string(line_items_.size());
 }
 
-LazyOrder LazyOrder::MakeOrder(LazyOrderRepository& repo, const LazyOrderDto& lazy_order_dto)
+LazyOrder LazyOrder::MakeOrder(LazyOrderRepository& repo, const std::string& id, int total_price)
 {
-    LazyOrder order{repo, lazy_order_dto.id};
-    order.total_price_ = lazy_order_dto.total_price;
+    LazyOrder order{repo, id};
+    order.total_price_ = total_price;
     order.line_items_loaded_ = false;
     return order;
 }

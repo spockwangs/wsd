@@ -14,6 +14,18 @@
 namespace ddd {
 namespace infra {
 
+struct LazyOrderDto {
+    std::string id;
+    int total_price;
+};
+
+struct LineItemDto {
+    std::string order_id;
+    std::string item_id;
+    std::string name;
+    int price;
+};
+
 class LazyOrderDao {
 public:
     virtual ~LazyOrderDao() = default;
@@ -24,25 +36,22 @@ public:
 
     virtual absl::Status Rollback() = 0;
 
-    virtual absl::Status SelectOrder(const std::string& id,
-                                     domain::LazyOrderDto* order_dto,
-                                     std::string* cas_token) = 0;
+    virtual absl::Status SelectOrder(const std::string& id, LazyOrderDto* order_dto, std::string* cas_token) = 0;
 
-    virtual absl::Status InsertOrder(const domain::LazyOrder& order) = 0;
+    virtual absl::Status InsertOrder(const LazyOrderDto& order) = 0;
 
-    virtual absl::Status UpdateOrder(const domain::LazyOrder& entity, const std::string& cas_token) = 0;
+    virtual absl::Status UpdateOrder(const LazyOrderDto& order, const std::string& cas_token) = 0;
 
     virtual absl::Status DeleteOrder(const std::string& id, const std::string& cas_token) = 0;
 
     virtual absl::Status CheckOrderCasToken(const std::string& id, const std::string& cas_token) = 0;
 
-    virtual absl::Status SelectLineItems(
-            const std::string& id,
-            std::vector<std::pair<domain::LineItemDto, std::string>>* line_item_cas_token_vec) = 0;
+    virtual absl::Status SelectLineItems(const std::string& id,
+                                         std::vector<std::pair<LineItemDto, std::string>>* line_item_cas_token_vec) = 0;
 
-    virtual absl::Status InsertLineItem(const domain::LineItem& line_item) = 0;
+    virtual absl::Status InsertLineItem(const LineItemDto& line_item) = 0;
 
-    virtual absl::Status UpdateLineItem(const domain::LineItem& line_item, const std::string& cas_token) = 0;
+    virtual absl::Status UpdateLineItem(const LineItemDto& line_item, const std::string& cas_token) = 0;
 
     virtual absl::Status DeleteLineItem(const std::string& id, const std::string& cas_token) = 0;
 
@@ -70,6 +79,10 @@ public:
     absl::Status Commit() override;
 
 private:
+    static LazyOrderDto ToOrderDto(const domain::LazyOrder& order);
+
+    static LineItemDto ToLineItemDto(const domain::LineItem& line_item);
+
     ChangeTracker<domain::LazyOrder> order_change_tracker_;
     ChangeTracker<domain::LineItem> line_item_change_tracker_;
     LazyOrderDao& dao_;
