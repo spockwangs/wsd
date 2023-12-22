@@ -7,6 +7,7 @@
 #pragma once
 
 #include <string>
+#include <optional>
 
 #include "entity.h"
 #include "repository.h"
@@ -110,8 +111,7 @@ private:
     LazyOrderRepository& repo_;
     std::string id_;
     int total_price_ = 0;
-    mutable bool line_items_loaded_ = false;
-    mutable std::vector<LineItem*> line_items_;
+    mutable std::optional<std::vector<LineItem*>> line_items_;
 };
 
 }  // namespace domain

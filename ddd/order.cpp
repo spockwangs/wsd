@@ -135,12 +135,11 @@ LazyOrder LazyOrder::MakeOrder(LazyOrderRepository& repo, const std::string& id,
 {
     LazyOrder order{repo, id};
     order.total_price_ = total_price;
-    order.line_items_loaded_ = false;
     return order;
 }
 
 LazyOrder::LazyOrder(LazyOrderRepository& repo, const std::string& id)
-    : repo_(repo), id_(id), total_price_(0), line_items_loaded_(true)
+    : repo_(repo), id_(id), total_price_(0)
 {
 }
 
@@ -152,7 +151,6 @@ LazyOrder& LazyOrder::operator=(const LazyOrder& other)
 
     id_ = other.id_;
     total_price_ = other.total_price_;
-    line_items_loaded_ = other.line_items_loaded_;
     line_items_ = other.line_items_;
     return *this;
 }
@@ -182,7 +180,7 @@ absl::Status LazyOrder::AddLineItem(const std::string& name, int price)
     if (!s.ok()) {
         return s;
     }
-    line_items_.push_back(repo_.AddLineItem(LineItem{id_, GenLineItemId(), name, price}));
+    line_items_.value().push_back(repo_.AddLineItem(LineItem{id_, GenLineItemId(), name, price}));
     total_price_ += price;
     return absl::OkStatus();
 }
@@ -193,7 +191,7 @@ absl::Status LazyOrder::RemoveLineItem(const std::string& item_id)
     if (!s.ok()) {
         return s;
     }
-    line_items_.erase(std::remove_if(line_items_.begin(), line_items_.end(), [this, &item_id](LineItem* item) {
+    line_items_.value().erase(std::remove_if(line_items_.value().begin(), line_items_.value().end(), [this, &item_id](LineItem* item) {
         if (item->GetItemId() == item_id) {
             total_price_ -= item->GetPrice();
             repo_.RemoveLineItem(item->GetId());
@@ -210,23 +208,24 @@ absl::Status LazyOrder::GetLineItems(std::vector<LineItem*>* line_items) const
     if (!s.ok()) {
         return s;
     }
-    *line_items = line_items_;
+    *line_items = line_items_.value();
     return absl::OkStatus();
 }
 
 std::string LazyOrder::GenLineItemId() const
 {
-    return std::to_string(line_items_.size());
+    return std::to_string(line_items_.value().size());
 }
 
 absl::Status LazyOrder::LoadLineItemsIfNecessary() const
 {
-    if (!line_items_loaded_) {
-        auto s = repo_.FindLineItems(id_, &line_items_);
+    if (!line_items_) {
+        std::vector<LineItem*> line_items;
+        auto s = repo_.FindLineItems(id_, &line_items);
         if (!s.ok()) {
             return s;
         }
-        line_items_loaded_ = true;
+        line_items_ = std::move(line_items);
     }
     return absl::OkStatus();
 }

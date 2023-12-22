@@ -71,7 +71,7 @@ TEST_F(LazyOrderRepositoryTest, SaveAndFind)
     EXPECT_EQ(order_3->GetTotalPrice(), 10);
 
     // Add a line item.
-    s = order->AddLineItem("banana", 5);
+    s = order_3->AddLineItem("banana", 5);
     EXPECT_TRUE(s.ok());
     EXPECT_TRUE(repo2.Commit().ok());
 
