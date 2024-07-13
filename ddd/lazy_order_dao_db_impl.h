@@ -25,22 +25,23 @@ public:
 
     absl::Status Rollback() override;
 
-    absl::Status SelectOrder(const std::string& id, LazyOrderDto* entity, std::string* cas_token) override;
+    absl::Status SelectOrder(const std::string& id, domain::LazyOrderDto* order_dto, std::string* cas_token) override;
 
-    absl::Status InsertOrder(const LazyOrderDto& entity) override;
+    absl::Status InsertOrder(const domain::LazyOrder& entity) override;
 
-    absl::Status UpdateOrder(const LazyOrderDto& entity, const std::string& cas_token) override;
+    absl::Status UpdateOrder(const domain::LazyOrder& entity, const std::string& cas_token) override;
 
     absl::Status DeleteOrder(const std::string& id, const std::string& cas_token) override;
 
     absl::Status CheckOrderCasToken(const std::string& id, const std::string& cas_token) override;
 
-    absl::Status SelectLineItems(const std::string& id,
-                                 std::vector<std::pair<LineItemDto, std::string>>* line_item_cas_token_vec) override;
+    absl::Status SelectLineItems(
+            const std::string& id,
+            std::vector<std::pair<domain::LineItemDto, std::string>>* line_item_cas_token_vec) override;
 
-    absl::Status InsertLineItem(const LineItemDto& line_item) override;
+    absl::Status InsertLineItem(const domain::LineItem& line_item) override;
 
-    absl::Status UpdateLineItem(const LineItemDto& line_item, const std::string& cas_token) override;
+    absl::Status UpdateLineItem(const domain::LineItem& line_item, const std::string& cas_token) override;
 
     absl::Status DeleteLineItem(const std::string& id, const std::string& cas_token) override;
 
@@ -63,13 +64,13 @@ private:
         int version = 0;
     };
 
-    static LazyOrderDto ToOrderDto(const LazyOrderPo& order_po);
+    static domain::LazyOrderDto ToLazyOrderDto(const LazyOrderPo& order_po);
 
-    static LineItemDto ToLineItemDto(const LineItemPo& line_item_po);
+    static domain::LineItemDto ToLineItemDto(const LineItemPo& line_item_po);
 
-    static LazyOrderPo FromLazyOrder(const LazyOrderDto& order, int version);
+    static LazyOrderPo FromLazyOrder(const domain::LazyOrder& order, int version);
 
-    static LineItemPo FromLineItem(const LineItemDto& line_item, int version);
+    static LineItemPo FromLineItem(const domain::LineItem& line_item, int version);
 
     std::mutex mu_;
 

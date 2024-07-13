@@ -34,14 +34,15 @@ absl::Status FromOrderPO(const std::string& s, std::shared_ptr<domain::Order>* o
 
 std::string ToOrderPO(const domain::Order& order)
 {
+  domain::OrderDto dto = order.ToDto();
     infra::Order order_po;
-    order_po.set_id(order.GetId());
-    order_po.set_total_price(order.GetTotalPrice());
-    for (const auto& item : order.GetLineItems()) {
+    order_po.set_id(dto.id);
+    order_po.set_total_price(dto.total_price);
+    for (const auto& item : dto.line_items) {
         auto* p = order_po.add_line_item();
-        p->set_id(item.GetId());
-        p->set_name(item.GetName());
-        p->set_price(item.GetPrice());
+        p->set_id(item.id);
+        p->set_name(item.name);
+        p->set_price(item.price);
     }
 
     std::string result;

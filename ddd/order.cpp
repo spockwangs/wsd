@@ -53,6 +53,17 @@ int LineItem::GetPrice() const
     return price_;
 }
 
+LineItemDto LineItem::ToDto() const
+{
+    LineItemDto result;
+    result.id = GetId();
+    result.order_id = order_id_;
+    result.item_id = item_id_;
+    result.name = name_;
+    result.price = price_;
+    return result;
+}
+
 Order Order::MakeOrder(const OrderDto& order_dto)
 {
     Order result{order_dto.id};
@@ -131,6 +142,17 @@ std::string Order::GenLineItemId() const
     return std::to_string(line_items_.size());
 }
 
+OrderDto Order::ToDto() const
+{
+    OrderDto result;
+    result.id = id_;
+    result.total_price = total_price_;
+    for (const auto& e : line_items_) {
+        result.line_items.push_back(e.ToDto());
+    }
+    return result;
+}
+
 LazyOrder LazyOrder::MakeOrder(LazyOrderRepository& repo, const std::string& id, int total_price)
 {
     LazyOrder order{repo, id};
@@ -138,8 +160,7 @@ LazyOrder LazyOrder::MakeOrder(LazyOrderRepository& repo, const std::string& id,
     return order;
 }
 
-LazyOrder::LazyOrder(LazyOrderRepository& repo, const std::string& id)
-    : repo_(repo), id_(id), total_price_(0)
+LazyOrder::LazyOrder(LazyOrderRepository& repo, const std::string& id) : repo_(repo), id_(id), total_price_(0)
 {
 }
 
@@ -191,14 +212,15 @@ absl::Status LazyOrder::RemoveLineItem(const std::string& item_id)
     if (!s.ok()) {
         return s;
     }
-    line_items_.value().erase(std::remove_if(line_items_.value().begin(), line_items_.value().end(), [this, &item_id](LineItem* item) {
-        if (item->GetItemId() == item_id) {
-            total_price_ -= item->GetPrice();
-            repo_.RemoveLineItem(item->GetId());
-            return true;
-        }
-        return false;
-    }));
+    line_items_.value().erase(
+            std::remove_if(line_items_.value().begin(), line_items_.value().end(), [this, &item_id](LineItem* item) {
+                if (item->GetItemId() == item_id) {
+                    total_price_ -= item->GetPrice();
+                    repo_.RemoveLineItem(item->GetId());
+                    return true;
+                }
+                return false;
+            }));
     return absl::OkStatus();
 }
 
@@ -228,6 +250,14 @@ absl::Status LazyOrder::LoadLineItemsIfNecessary() const
         line_items_ = std::move(line_items);
     }
     return absl::OkStatus();
+}
+
+LazyOrderDto LazyOrder::ToDto() const
+{
+    LazyOrderDto result;
+    result.id = id_;
+    result.total_price = total_price_;
+    return result;
 }
 
 }  // namespace domain

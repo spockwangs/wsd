@@ -27,19 +27,21 @@ absl::Status LazyOrderDaoDbImpl::Rollback()
     return absl::OkStatus();
 }
 
-absl::Status LazyOrderDaoDbImpl::SelectOrder(const std::string& id, LazyOrderDto* order_dto, std::string* cas_token)
+absl::Status LazyOrderDaoDbImpl::SelectOrder(const std::string& id,
+                                             domain::LazyOrderDto* order_dto,
+                                             std::string* cas_token)
 {
     auto it = order_map_.find(id);
     if (it == order_map_.end()) {
         return absl::NotFoundError("");
     }
 
-    *order_dto = ToOrderDto(it->second);
+    *order_dto = ToLazyOrderDto(it->second);
     *cas_token = std::to_string(it->second.version);
     return absl::OkStatus();
 }
 
-absl::Status LazyOrderDaoDbImpl::InsertOrder(const LazyOrderDto& order)
+absl::Status LazyOrderDaoDbImpl::InsertOrder(const domain::LazyOrder& order)
 {
     LazyOrderPo order_po = FromLazyOrder(order, 0);
     if (order_map_.insert({order_po.id, order_po}).second == false) {
@@ -49,9 +51,9 @@ absl::Status LazyOrderDaoDbImpl::InsertOrder(const LazyOrderDto& order)
     return absl::OkStatus();
 }
 
-absl::Status LazyOrderDaoDbImpl::UpdateOrder(const LazyOrderDto& order, const std::string& cas_token)
+absl::Status LazyOrderDaoDbImpl::UpdateOrder(const domain::LazyOrder& order, const std::string& cas_token)
 {
-    auto it = order_map_.find(order.id);
+    auto it = order_map_.find(order.GetId());
     if (it == order_map_.end()) {
         return absl::NotFoundError("");
     }
@@ -104,7 +106,7 @@ absl::Status LazyOrderDaoDbImpl::CheckOrderCasToken(const std::string& id, const
 }
 
 absl::Status LazyOrderDaoDbImpl::SelectLineItems(
-        const std::string& id, std::vector<std::pair<LineItemDto, std::string>>* line_item_cas_token_vec)
+        const std::string& id, std::vector<std::pair<domain::LineItemDto, std::string>>* line_item_cas_token_vec)
 {
     for (const auto& line_item : line_item_map_) {
         if (line_item.second.order_id == id) {
@@ -115,19 +117,19 @@ absl::Status LazyOrderDaoDbImpl::SelectLineItems(
     return absl::OkStatus();
 }
 
-absl::Status LazyOrderDaoDbImpl::InsertLineItem(const LineItemDto& line_item)
+absl::Status LazyOrderDaoDbImpl::InsertLineItem(const domain::LineItem& line_item)
 {
     LineItemPo line_item_po = FromLineItem(line_item, 0);
-    if (line_item_map_.insert({line_item.order_id + "/" + line_item.item_id, line_item_po}).second == false) {
+    if (line_item_map_.insert({line_item.GetId(), line_item_po}).second == false) {
         return absl::AbortedError("");
     }
 
     return absl::OkStatus();
 }
 
-absl::Status LazyOrderDaoDbImpl::UpdateLineItem(const LineItemDto& line_item, const std::string& cas_token)
+absl::Status LazyOrderDaoDbImpl::UpdateLineItem(const domain::LineItem& line_item, const std::string& cas_token)
 {
-    auto it = line_item_map_.find(line_item.order_id + "/" + line_item.item_id);
+    auto it = line_item_map_.find(line_item.GetId());
     if (it == line_item_map_.end()) {
         return absl::NotFoundError("");
     }
@@ -185,33 +187,41 @@ void LazyOrderDaoDbImpl::ResetForTesting()
     line_item_map_.clear();
 }
 
-LazyOrderDaoDbImpl::LazyOrderPo LazyOrderDaoDbImpl::FromLazyOrder(const LazyOrderDto& order, int old_version)
+domain::LazyOrderDto LazyOrderDaoDbImpl::ToLazyOrderDto(const LazyOrderPo& order_po)
 {
-    return LazyOrderPo{.id = order.id, .total_price = order.total_price, .version = old_version + 1};
-}
-
-LazyOrderDaoDbImpl::LineItemPo LazyOrderDaoDbImpl::FromLineItem(const LineItemDto& line_item, int old_version)
-{
-    LineItemPo result;
-    result.order_id = line_item.order_id;
-    result.item_id = line_item.item_id;
-    result.price = line_item.price;
-    result.name = line_item.name;
-    result.version = old_version + 1;
+    domain::LazyOrderDto result;
+    result.id = order_po.id;
+    result.total_price = order_po.total_price;
     return result;
 }
 
-LazyOrderDto LazyOrderDaoDbImpl::ToOrderDto(const LazyOrderPo& order_po)
+domain::LineItemDto LazyOrderDaoDbImpl::ToLineItemDto(const LineItemPo& line_item_po)
 {
-    return LazyOrderDto{.id = order_po.id, .total_price = order_po.total_price};
+    domain::LineItemDto result;
+    result.id = line_item_po.order_id + "/" + line_item_po.item_id;
+    result.order_id = line_item_po.order_id;
+    result.item_id = line_item_po.item_id;
+    result.name = line_item_po.name;
+    result.price = line_item_po.price;
+    return result;
 }
 
-LineItemDto LazyOrderDaoDbImpl::ToLineItemDto(const LineItemPo& line_item_po)
+LazyOrderDaoDbImpl::LazyOrderPo LazyOrderDaoDbImpl::FromLazyOrder(const domain::LazyOrder& order, int old_version)
 {
-    return LineItemDto{.order_id = line_item_po.order_id,
-                       .item_id = line_item_po.item_id,
-                       .name = line_item_po.name,
-                       .price = line_item_po.price};
+    domain::LazyOrderDto dto = order.ToDto();
+    return LazyOrderPo{.id = dto.id, .total_price = dto.total_price, .version = old_version + 1};
+}
+
+LazyOrderDaoDbImpl::LineItemPo LazyOrderDaoDbImpl::FromLineItem(const domain::LineItem& line_item, int old_version)
+{
+    domain::LineItemDto dto = line_item.ToDto();
+    LineItemPo result;
+    result.order_id = dto.order_id;
+    result.item_id = dto.item_id;
+    result.price = dto.price;
+    result.name = dto.name;
+    result.version = old_version + 1;
+    return result;
 }
 
 }  // namespace infra

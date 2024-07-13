@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include <string>
 #include <optional>
+#include <string>
 
 #include "entity.h"
 #include "repository.h"
@@ -16,6 +16,7 @@ namespace ddd {
 namespace domain {
 
 struct LineItemDto {
+    std::string id;
     std::string order_id;
     std::string item_id;
     std::string name;
@@ -39,6 +40,9 @@ public:
     const std::string& GetName() const;
 
     int GetPrice() const;
+
+    // Externalize the state for persistence.
+    LineItemDto ToDto() const;
 
 private:
     std::string order_id_;
@@ -73,12 +77,20 @@ public:
 
     const std::vector<LineItem>& GetLineItems() const;
 
+    // Externalize the state for persistence.
+    OrderDto ToDto() const;
+
 private:
     std::string GenLineItemId() const;
 
     std::string id_;
     int total_price_ = 0;
     std::vector<LineItem> line_items_;
+};
+
+struct LazyOrderDto {
+    std::string id;
+    int total_price;
 };
 
 class LazyOrder : public Entity<std::string, LazyOrder> {
@@ -102,6 +114,9 @@ public:
     absl::Status RemoveLineItem(const std::string& line_item_id);
 
     absl::Status GetLineItems(std::vector<LineItem*>* line_items) const;
+
+    // Externalize the state for persistence.
+    LazyOrderDto ToDto() const;
 
 private:
     std::string GenLineItemId() const;

@@ -54,14 +54,14 @@ absl::Status OrderDaoDbImpl::Select(const std::string& id,
 
 absl::Status OrderDaoDbImpl::Insert(const domain::Order& order)
 {
-    OrderDto order_dto = FromOrder(order);
+    OrderRecord order_dto = FromOrder(order);
     ++order_dto.version;
     if (order_map_.insert({order_dto.id, order_dto}).second == false) {
         return absl::AbortedError("");
     }
 
     for (const auto& line_item : order.GetLineItems()) {
-        LineItemDto line_item_dto = FromLineItem(order.GetId(), line_item);
+        LineItemRecord line_item_dto = FromLineItem(order.GetId(), line_item);
         if (line_item_map_.insert({line_item.GetId(), line_item_dto}).second == false) {
             return absl::AbortedError("");
         }
@@ -153,21 +153,24 @@ void OrderDaoDbImpl::ResetForTesting()
     line_item_map_.clear();
 }
 
-OrderDaoDbImpl::OrderDto OrderDaoDbImpl::FromOrder(const domain::Order& order)
+OrderDaoDbImpl::OrderRecord OrderDaoDbImpl::FromOrder(const domain::Order& order)
 {
-    OrderDto result;
-    result.id = order.GetId();
-    result.total_price = order.GetTotalPrice();
+    domain::OrderDto dto = order.ToDto();
+    OrderRecord result;
+    result.id = dto.id;
+    result.total_price = dto.total_price;
     return result;
 }
 
-OrderDaoDbImpl::LineItemDto OrderDaoDbImpl::FromLineItem(const std::string& order_id, const domain::LineItem& line_item)
+OrderDaoDbImpl::LineItemRecord OrderDaoDbImpl::FromLineItem(const std::string& order_id,
+                                                            const domain::LineItem& line_item)
 {
-    LineItemDto result;
+    domain::LineItemDto dto = line_item.ToDto();
+    LineItemRecord result;
     result.order_id = order_id;
-    result.id = line_item.GetId();
-    result.price = line_item.GetPrice();
-    result.name = line_item.GetName();
+    result.id = dto.id;
+    result.price = dto.price;
+    result.name = dto.name;
     return result;
 }
 

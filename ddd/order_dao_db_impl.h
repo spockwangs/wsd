@@ -40,30 +40,30 @@ public:
     void ResetForTesting();
 
 private:
-    struct OrderDto {
+    struct OrderRecord {
         std::string id;
         int total_price = 0;
         int version = 0;
     };
 
-    struct LineItemDto {
+    struct LineItemRecord {
         std::string order_id;
         std::string id;
         int price = 0;
         std::string name;
     };
 
-    static OrderDto FromOrder(const domain::Order& order);
+    static OrderRecord FromOrder(const domain::Order& order);
 
-    static LineItemDto FromLineItem(const std::string& order_id, const domain::LineItem& line_item);
+    static LineItemRecord FromLineItem(const std::string& order_id, const domain::LineItem& line_item);
 
     std::mutex mu_;
 
     // Order ID => Order
-    std::unordered_map<std::string, OrderDto> order_map_;
+    std::unordered_map<std::string, OrderRecord> order_map_;
 
     // Order ID/LineItem ID => LineItem
-    std::unordered_map<std::string, LineItemDto> line_item_map_;
+    std::unordered_map<std::string, LineItemRecord> line_item_map_;
 };
 
 }  // namespace infra
